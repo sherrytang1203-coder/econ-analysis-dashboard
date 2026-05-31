@@ -1023,41 +1023,9 @@ def render_single_stock(ticker: str) -> None:
             decreasing_line_color="#ef4444", decreasing_fillcolor="#ef4444",
         ))
 
-    fig_price.update_layout(
-        plot_bgcolor="white",
-        paper_bgcolor="white",
-        height=350,
-        margin=dict(l=0, r=4, t=4, b=40),
-        hovermode="x unified",
-        showlegend=False,
-        dragmode=False,
-        xaxis=dict(
-            showgrid=True,
-            gridcolor="rgba(0,0,0,0.1)",
-            tickfont=dict(color="#666", size=11),
-            showline=False, zeroline=False,
-            rangeslider_visible=False,
-        ),
-        yaxis=dict(
-            side="right",
-            range=[y_lo, y_hi],
-            showgrid=True,
-            gridcolor="rgba(0,0,0,0.08)",
-            tickfont=dict(color="#666", size=11),
-            zeroline=False, showline=False,
-            tickprefix="$",
-        ),
-        hoverlabel=dict(
-            bgcolor="white", bordercolor="rgba(0,0,0,0.2)",
-            font=dict(color="black", size=12),
-        ),
-    )
-    st.markdown("""
-    <style>
-    .plotly-container { width: 100% !important; overflow-x: auto !important; }
-    .plotly-graph-div { width: 100% !important; margin: 0 !important; }
-    </style>
-    """, unsafe_allow_html=True)
+    fig_price.update_layout(**_pro_layout("Stock Price (5Y)", "USD ($)", height=300))
+    fig_price.update_layout(yaxis=dict(range=[y_lo, y_hi]), dragmode=False)
+    _apply_range_buttons(fig_price, fp, "date", "close")
     st.plotly_chart(fig_price, use_container_width=True, config={"displayModeBar": False})
 
     with st.container(border=True):
