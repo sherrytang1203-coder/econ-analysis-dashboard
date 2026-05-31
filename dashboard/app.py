@@ -922,18 +922,16 @@ def _stock_metric_cards(info: dict, fcf_yield, curr_rsi_d, curr_rsi_w, fcf_forec
         <div class="mval {fcf_cls}">{v(fcf_yield,'.1f',suf='%') if fcf_yield is not None else 'N/A'}</div>
       </div>
     </div>
-    {f'''
-    <div class="mpair" style="margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.1)">
+    {f'''<div class="mpair" style="margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.1)">
       <div class="mitem">
         <div class="mlabel">FCF Yield 2026F</div>
-        <div class="mval">{v(fcf_forecast['fcf_yield_2026'],'.1f',suf='%') if fcf_forecast else 'N/A'}</div>
+        <div class="mval">{fcf_forecast['fcf_yield_2026']:.1f}%</div>
       </div>
       <div class="mitem">
-        <div class="mlabel" style="font-size:0.85em">Confidence: {fcf_forecast['confidence'] if fcf_forecast else 'N/A'}</div>
-        <div class="mval" style="font-size:0.9em; opacity:0.8">EPS Growth: {v(fcf_forecast['eps_growth_rate'],'.1f',suf='%') if fcf_forecast else 'N/A'}</div>
+        <div class="mlabel" style="font-size:0.85em">Confidence: {fcf_forecast['confidence']}</div>
+        <div class="mval" style="font-size:0.9em; opacity:0.8">EPS Growth: {fcf_forecast['eps_growth_rate']:.1f}%</div>
       </div>
-    </div>
-    ''' if fcf_forecast else ''}
+    </div>''' if fcf_forecast else ''}
   </div>
 
   <div class="mgroup" style="--gc:#FF9800">
