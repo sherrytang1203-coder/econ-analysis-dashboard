@@ -1145,6 +1145,17 @@ def render_single_stock(ticker: str) -> None:
 
                 # Add 2026 forecast point
                 if fcf_forecast:
+                    # Add dotted line connecting last historical year to 2026 forecast
+                    last_year = valid["year"].iloc[-1]
+                    last_yield = valid["fcf_yield"].iloc[-1]
+                    fig_fcf.add_trace(go.Scatter(
+                        x=[str(last_year), "2026"],
+                        y=[last_yield, fcf_forecast["fcf_yield_2026"]],
+                        mode="lines", name="Projection",
+                        line=dict(color="#f59e0b", width=2, dash="dot"),
+                        hovertemplate="%{x} — Yield: %{y:.1f}%<extra></extra>",
+                    ))
+
                     fig_fcf.add_trace(go.Scatter(
                         x=["2026"], y=[fcf_forecast["fcf_yield_2026"]],
                         mode="markers+text", name="2026 Forecast",
