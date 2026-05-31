@@ -97,7 +97,13 @@ if "update_results" not in st.session_state:
 
 def _load_custom_stocks() -> dict:
     try:
-        return store.get_watchlist()
+        if store.is_supabase:
+            r = store._supa.table("watchlist").select("ticker,name").execute()
+            return {row["ticker"]: row["name"] for row in (r.data or [])}
+        rows = store._conn.execute(
+            "SELECT ticker, name FROM watchlist ORDER BY added_at"
+        ).fetchall()
+        return {ticker: name for ticker, name in rows}
     except Exception:
         pass
     if os.path.exists(CUSTOM_STOCKS_PATH):
@@ -110,7 +116,21 @@ def _load_custom_stocks() -> dict:
 
 
 def _save_custom_stock(ticker: str, name: str) -> None:
-    store.add_to_watchlist(ticker, name)
+    from datetime import datetime, timezone
+    added_at = datetime.now(timezone.utc).isoformat()
+    try:
+        if store.is_supabase:
+            store._supa.table("watchlist").upsert(
+                {"ticker": ticker, "name": name, "added_at": added_at}
+            ).execute()
+        else:
+            store._conn.execute(
+                "INSERT OR REPLACE INTO watchlist (ticker, name, added_at) VALUES (?,?,?)",
+                (ticker, name, added_at),
+            )
+            store._conn.commit()
+    except Exception as e:
+        st.warning(f"Could not save {ticker} to watchlist: {e}")
 
 # ── Cached market data fetchers ───────────────────────────────────────────────
 
