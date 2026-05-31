@@ -1052,7 +1052,13 @@ def render_single_stock(ticker: str) -> None:
             font=dict(color="black", size=12),
         ),
     )
-    st.plotly_chart(fig_price, use_container_width=True, config={"displayModeBar": False, "responsive": True})
+    st.markdown("""
+    <style>
+    .plotly-container { width: 100% !important; overflow-x: auto !important; }
+    .plotly-graph-div { width: 100% !important; margin: 0 !important; }
+    </style>
+    """, unsafe_allow_html=True)
+    st.plotly_chart(fig_price, use_container_width=True, config={"displayModeBar": False})
 
     with st.container(border=True):
         st.plotly_chart(_rsi_chart(rsi_daily, rsi_weekly), use_container_width=True, config={"displayModeBar": False})
