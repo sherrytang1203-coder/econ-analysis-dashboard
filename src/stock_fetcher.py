@@ -346,17 +346,28 @@ def fetch_fcf_yield_forecast_2026(ticker: str, fcf_guidance_billions: float = No
             t = yf.Ticker(ticker)
             info = t.info
             market_cap_billions = info.get("marketCap", 0) / 1e9
+            trailing_eps = info.get("trailingEps", 0)
+            forward_eps = info.get("forwardEps", 0)
 
             if market_cap_billions <= 0:
                 return None
 
             fcf_yield = (fcf_guidance_billions / market_cap_billions) * 100
+
+            # Calculate EPS growth rate for display
+            eps_growth = 0
+            if trailing_eps and trailing_eps != 0:
+                eps_growth = ((forward_eps - trailing_eps) / abs(trailing_eps)) * 100
+
             return {
                 "fcf_yield_2026": round(fcf_yield, 2),
                 "fcf_2026": round(fcf_guidance_billions, 2),
                 "market_cap_2026": round(market_cap_billions, 2),
                 "confidence": "Official",
                 "source": "Company guidance",
+                "eps_growth_rate": round(eps_growth, 2),
+                "fcf_margin_hist": 0,  # Not applicable for official guidance
+                "capex_margin_hist": 0,  # Not applicable for official guidance
             }
         except Exception:
             return None
