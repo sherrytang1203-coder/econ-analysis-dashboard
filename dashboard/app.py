@@ -1027,7 +1027,7 @@ def render_single_stock(ticker: str) -> None:
         plot_bgcolor="white",
         paper_bgcolor="white",
         height=380,
-        margin=dict(l=0, r=4, t=4, b=0),
+        margin=dict(l=0, r=4, t=4, b=35),
         hovermode="x unified",
         showlegend=False,
         dragmode=False,
