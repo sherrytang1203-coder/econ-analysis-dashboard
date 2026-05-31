@@ -1165,9 +1165,7 @@ def render_single_stock(ticker: str) -> None:
                     yaxis=dict(gridcolor="#f3f4f6",
                                tickfont=dict(size=11, color="#9ca3af"),
                                zeroline=False, showline=False),
-                    showlegend=True,
-                    legend=dict(x=0, y=1, bgcolor="rgba(255,255,255,0.8)",
-                               bordercolor="#e5e7eb", borderwidth=1),
+                    showlegend=False,
                     dragmode=False,
                 )
                 st.plotly_chart(fig_fcf, use_container_width=True, config={"displayModeBar": False, "scrollZoom": False})
