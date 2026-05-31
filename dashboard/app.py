@@ -215,6 +215,17 @@ if st.session_state.update_results:
 meta_df = store.get_all_metadata()
 if meta_df.empty:
     st.session_state.update_results = None  # clear stale results from previous session
+
+    # Detect infinite loop: if we already ran a load this session, stop
+    if st.session_state.get("initial_load_attempted"):
+        st.error(
+            "Data load completed but the database still appears empty. "
+            "This usually means the **Supabase key is incorrect**. "
+            "Check that `SUPABASE_KEY` in Streamlit Secrets starts with `eyJ` (JWT format), "
+            "not `sb_publishable_...`. Then reboot the app."
+        )
+        st.stop()
+
     fred = get_fred_client()
     if fred is None:
         st.warning(
@@ -223,6 +234,7 @@ if meta_df.empty:
             "Free key at https://fred.stlouisfed.org/docs/api/api_key.html"
         )
         st.stop()
+    st.session_state.initial_load_attempted = True
     st.info("First run — fetching all macro series from FRED and saving to database. "
             "This takes ~1 min locally or ~3-5 min on Streamlit Cloud. Please wait and do not refresh.")
     progress_bar = st.progress(0, text="Loading...")
