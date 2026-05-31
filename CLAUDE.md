@@ -65,3 +65,19 @@ Reads `os.environ` first (populated from `.env` via `python-dotenv`), then falls
 - Secrets are set in App Settings → Secrets (TOML format).
 - The Supabase tables must be created manually via SQL Editor before first deploy — see the CREATE TABLE statements in `Store._init_sqlite_tables()`.
 - RLS must be disabled on all four tables: `ALTER TABLE <name> DISABLE ROW LEVEL SECURITY;`
+
+## Debug log
+
+### `AttributeError: 'Store' object has no attribute 'execute'` (2026-05-31)
+
+**Symptom:** App crashes on startup with the traceback pointing to `src/storage.py` line 53, inside `get_stored_last_updated`, where `conn.execute(...)` is called with a `Store` instance instead of a SQLite connection.
+
+**Root cause:** During the Supabase migration, `storage.py` (the old SQLite module) was superseded by `store.py` but not immediately deleted. Streamlit kept a stale background process in memory (started via `run_in_background` tool calls) that still had the old `storage.py` loaded. Additionally, Python's `__pycache__` held compiled bytecode of the old files, which Streamlit continued to use across restarts. The old code called `storage.get_stored_last_updated(conn, series_id)` where `conn` was now a `Store` object, causing the error.
+
+**Fix applied:**
+1. Deleted `src/storage.py` and `src/news_store.py` entirely — all storage goes through `src/store.py`.
+2. Cleared all `__pycache__` directories and `.pyc` files.
+3. Killed all background Python/Streamlit processes (not just the foreground one).
+4. `Store()` is now instantiated at module level in `app.py` without session state or `@st.cache_resource` caching — both caused stale instances to persist across deployments.
+
+**Lesson:** When Streamlit is started with `run_in_background`, Ctrl+C in the terminal only kills the foreground process. Background processes continue serving the old code. Always kill all Python processes explicitly (`Get-Process python* | Stop-Process -Force`) before restarting.
