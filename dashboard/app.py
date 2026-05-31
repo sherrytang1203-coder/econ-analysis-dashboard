@@ -946,14 +946,15 @@ def _stock_metric_cards(info: dict, fcf_yield, curr_rsi_d, curr_rsi_w) -> None:
 
 
 def render_single_stock(ticker: str) -> None:
-    info       = _stock_info(ticker)
-    fcf_yield  = _stock_fcf_yield(ticker)
-    rsi_daily  = _stock_rsi(ticker, weekly=False)
-    rsi_weekly = _stock_rsi(ticker, weekly=True)
-    curr_rsi_d = float(rsi_daily["rsi"].iloc[-1])  if not rsi_daily.empty  else None
-    curr_rsi_w = float(rsi_weekly["rsi"].iloc[-1]) if not rsi_weekly.empty else None
+    with st.spinner("Loading stock data..."):
+        info       = _stock_info(ticker)
+        fcf_yield  = _stock_fcf_yield(ticker)
+        rsi_daily  = _stock_rsi(ticker, weekly=False)
+        rsi_weekly = _stock_rsi(ticker, weekly=True)
+        curr_rsi_d = float(rsi_daily["rsi"].iloc[-1])  if not rsi_daily.empty  else None
+        curr_rsi_w = float(rsi_weekly["rsi"].iloc[-1]) if not rsi_weekly.empty else None
 
-    _stock_metric_cards(info, fcf_yield, curr_rsi_d, curr_rsi_w)
+        _stock_metric_cards(info, fcf_yield, curr_rsi_d, curr_rsi_w)
 
     st.divider()
 
