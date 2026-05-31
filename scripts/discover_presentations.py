@@ -21,6 +21,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.ir_scrapers import scrape_otis_guidance, get_presentation_pdf_url
 from src.guidance_manager import add_forecast, get_guidance_summary, list_all_guidance, get_csv_summary, read_guidance_csv
 from src.stock_fetcher import extract_fcf_from_pdf
+from src.ir_config import (
+    load_ir_presentations, add_ir_presentation, batch_process_all_presentations,
+    get_ir_config_summary, process_ir_presentation
+)
 
 
 def discover_otis():
@@ -127,24 +131,84 @@ def show_summary():
     print(get_csv_summary())
 
 
+def batch_process():
+    """Process all presentations from ir_presentations.csv config."""
+    print("\n[*] Batch processing all presentations from config...\n")
+    results = batch_process_all_presentations()
+
+    print("\n" + "=" * 70)
+    print("[BATCH RESULTS]")
+    print("=" * 70)
+
+    success_count = sum(1 for r in results if r["status"] == "success")
+    error_count = sum(1 for r in results if r["status"] == "error")
+    no_guidance = sum(1 for r in results if r["status"] == "no_guidance")
+
+    print(f"\nProcessed: {len(results)} presentations")
+    print(f"  [OK] {success_count} successfully extracted")
+    print(f"  [WARN] {no_guidance} no guidance found")
+    print(f"  [ERROR] {error_count} errors")
+
+    for result in results:
+        if result["status"] == "success":
+            print(f"\n[+] {result['company']}:")
+            print(f"    FCF: ${result['fcf_min']}B - ${result['fcf_max']}B (${result['fcf_midpoint']}B midpoint)")
+            if result["eps_midpoint"]:
+                print(f"    EPS: ${result['eps_min']} - ${result['eps_max']} (${result['eps_midpoint']} midpoint)")
+
+
+def show_ir_config():
+    """Show current IR presentations configuration."""
+    print(get_ir_config_summary())
+
+
+def add_to_config():
+    """Interactively add a presentation to the config."""
+    print("\n[+] Add new IR presentation to config\n")
+
+    company = input("Company ticker (e.g., OTIS): ").strip().upper()
+    url = input("Presentation PDF URL: ").strip()
+    description = input("Description (optional, e.g., 'Q1 2026 Earnings'): ").strip()
+
+    if not company or not url:
+        print("[ERROR] Company and URL are required")
+        return
+
+    success = add_ir_presentation(company, url, description)
+
+    if success:
+        print(f"[OK] Added {company} to ir_presentations.csv")
+    else:
+        print("[ERROR] Failed to add presentation")
+
+
 def main():
     import argparse
 
-    parser = argparse.ArgumentParser(description="Discover and add presentations from OTIS IR website")
+    parser = argparse.ArgumentParser(description="Discover and add presentations from IR websites")
     parser.add_argument("--discover", action="store_true", help="Discover presentations from OTIS")
     parser.add_argument("--add-manual", type=str, help="Add a presentation PDF URL manually")
+    parser.add_argument("--batch", action="store_true", help="Batch process all presentations from ir_presentations.csv")
+    parser.add_argument("--config", action="store_true", help="Show IR presentations config")
+    parser.add_argument("--add-config", action="store_true", help="Interactively add to ir_presentations.csv")
     parser.add_argument("--summary", action="store_true", help="Show all stored guidance")
     parser.add_argument("--ticker", type=str, default="OTIS", help="Stock ticker")
     parser.add_argument("--year", type=int, default=2026, help="Forecast year")
 
     args = parser.parse_args()
 
-    if args.summary or not any([args.discover, args.add_manual]):
+    if args.summary or not any([args.discover, args.add_manual, args.batch, args.config, args.add_config]):
         show_summary()
     elif args.discover:
         discover_otis()
     elif args.add_manual:
         add_manual_presentation(args.add_manual, ticker=args.ticker, year=args.year)
+    elif args.batch:
+        batch_process()
+    elif args.config:
+        show_ir_config()
+    elif args.add_config:
+        add_to_config()
 
 
 if __name__ == "__main__":
