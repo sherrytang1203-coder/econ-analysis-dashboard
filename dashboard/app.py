@@ -47,6 +47,59 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
+st.markdown("""
+<style>
+@media (max-width: 768px) {
+    /* Reduce main container padding */
+    .main .block-container {
+        padding: 0.75rem 0.5rem !important;
+        max-width: 100% !important;
+    }
+
+    /* Stack all columns vertically */
+    div[data-testid="stHorizontalBlock"] {
+        flex-direction: column !important;
+    }
+    div[data-testid="column"] {
+        width: 100% !important;
+        flex: 1 1 100% !important;
+        min-width: 100% !important;
+    }
+
+    /* Make tab bar scroll horizontally */
+    div[data-testid="stTabBar"] {
+        overflow-x: auto !important;
+        flex-wrap: nowrap !important;
+    }
+    div[data-testid="stTabBar"] button {
+        white-space: nowrap !important;
+        flex-shrink: 0 !important;
+    }
+
+    /* Stack metric card groups vertically */
+    .metric-grid { flex-direction: column !important; }
+    .mgroup      { width: 100% !important; }
+    .mpair       { gap: 16px !important; }
+    .mval        { font-size: 22px !important; }
+
+    /* Shrink title */
+    .stock-name  { font-size: 20px !important; }
+
+    /* Reduce chart height on mobile to avoid excessive scrolling */
+    .js-plotly-plot { max-height: 260px !important; }
+
+    /* Full-width selectbox and inputs */
+    div[data-testid="stSelectbox"],
+    div[data-testid="stTextInput"] {
+        width: 100% !important;
+    }
+
+    /* Tighten header */
+    h1 { font-size: 1.4rem !important; }
+}
+</style>
+""", unsafe_allow_html=True)
+
 # ── Session state ─────────────────────────────────────────────────────────────
 
 if "store" not in st.session_state:
