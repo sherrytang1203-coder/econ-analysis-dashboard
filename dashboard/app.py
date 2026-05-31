@@ -130,7 +130,7 @@ def _save_custom_stock(ticker: str, name: str) -> None:
             )
             store._conn.commit()
     except Exception as e:
-        st.warning(f"Could not save {ticker} to watchlist: {e}")
+        st.session_state["watchlist_error"] = str(e)
 
 # ── Cached market data fetchers ───────────────────────────────────────────────
 
@@ -1003,6 +1003,9 @@ def render_single_stock(ticker: str) -> None:
 
 
 def render_stock_tracing() -> None:
+    if "watchlist_error" in st.session_state:
+        st.error(f"Watchlist save failed: {st.session_state.pop('watchlist_error')}")
+
     custom   = _load_custom_stocks()
     all_stocks = {**TRACKED_STOCKS, **custom}
     tickers  = list(all_stocks.keys())
