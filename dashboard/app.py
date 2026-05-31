@@ -1150,13 +1150,10 @@ def render_single_stock(ticker: str) -> None:
 
                     fig_fcf.add_trace(go.Scatter(
                         x=["2026"], y=[fcf_forecast["fcf_yield_2026"]],
-                        mode="markers+text", name="2026 Forecast",
+                        mode="markers", name="2026 Forecast",
                         marker=dict(size=12, color="#f59e0b",
                                    symbol="diamond",
                                    line=dict(width=2, color="white")),
-                        text=[f"{fcf_forecast['fcf_yield_2026']:.1f}%"],
-                        textposition="top center",
-                        textfont=dict(size=10, color="#f59e0b"),
                         hovertemplate="2026 Forecast — Yield: %{y:.1f}%<extra></extra>",
                     ))
 
@@ -1171,6 +1168,7 @@ def render_single_stock(ticker: str) -> None:
                     showlegend=True,
                     legend=dict(x=0, y=1, bgcolor="rgba(255,255,255,0.8)",
                                bordercolor="#e5e7eb", borderwidth=1),
+                    dragmode=False,
                 )
                 st.plotly_chart(fig_fcf, use_container_width=True, config={"displayModeBar": False})
             else:
