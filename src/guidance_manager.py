@@ -6,15 +6,22 @@ this module provides a practical system to:
 1. Manually input official guidance from presentations
 2. Extract guidance from PDF URLs
 3. Override calculated forecasts with official numbers
+
+Storage:
+- guidance_forecasts.json: Current/latest guidance (for quick lookup)
+- guidance_history.csv: Historical log of all guidance extractions (for tracking)
 """
 
 import json
+import csv
 from pathlib import Path
+from datetime import datetime
 from typing import Optional
 from src.stock_fetcher import extract_fcf_from_pdf
 
 
 GUIDANCE_FILE = Path(__file__).parent.parent / "data" / "guidance_forecasts.json"
+GUIDANCE_CSV = Path(__file__).parent.parent / "data" / "guidance_history.csv"
 
 
 def load_guidance() -> dict[str, any]:
@@ -29,7 +36,7 @@ def load_guidance() -> dict[str, any]:
 
 
 def save_guidance(guidance_dict: dict[str, any]) -> bool:
-    """Save guidance forecasts to file."""
+    """Save guidance forecasts to JSON file."""
     try:
         GUIDANCE_FILE.parent.mkdir(parents=True, exist_ok=True)
         with open(GUIDANCE_FILE, 'w') as f:
@@ -39,10 +46,67 @@ def save_guidance(guidance_dict: dict[str, any]) -> bool:
         return False
 
 
+def _ensure_csv_exists() -> bool:
+    """Create CSV file with headers if it doesn't exist."""
+    try:
+        GUIDANCE_CSV.parent.mkdir(parents=True, exist_ok=True)
+
+        if not GUIDANCE_CSV.exists():
+            with open(GUIDANCE_CSV, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.DictWriter(f, fieldnames=[
+                    'company', 'snap_date', 'forecast_year', 'eps', 'fcf'
+                ])
+                writer.writeheader()
+        return True
+    except Exception:
+        return False
+
+
+def append_to_csv(ticker: str, forecast_year: int, eps: Optional[float] = None,
+                  fcf: Optional[float] = None, snap_date: Optional[str] = None) -> bool:
+    """
+    Append guidance record to CSV history file.
+
+    Args:
+        ticker: Stock ticker
+        forecast_year: Forecast year (e.g., 2026)
+        eps: EPS forecast (optional)
+        fcf: FCF forecast in billions (optional)
+        snap_date: Date when data was pulled (defaults to today)
+
+    Returns:
+        True if appended successfully
+    """
+    try:
+        if not snap_date:
+            snap_date = datetime.now().strftime("%Y-%m-%d")
+
+        _ensure_csv_exists()
+
+        with open(GUIDANCE_CSV, 'a', newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=[
+                'company', 'snap_date', 'forecast_year', 'eps', 'fcf'
+            ])
+            writer.writerow({
+                'company': ticker,
+                'snap_date': snap_date,
+                'forecast_year': forecast_year,
+                'eps': eps if eps is not None else '',
+                'fcf': fcf if fcf is not None else ''
+            })
+        return True
+    except Exception:
+        return False
+
+
 def add_forecast(ticker: str, year: int, fcf_billions: float, eps_dollars: float = None,
                  source: str = "", pdf_url: str = "") -> bool:
     """
     Add or update official guidance for a company.
+
+    This saves to both:
+    1. JSON (guidance_forecasts.json) - for quick lookup
+    2. CSV (guidance_history.csv) - historical log with snapshot date
 
     Args:
         ticker: Stock ticker (e.g., 'OTIS')
@@ -67,7 +131,19 @@ def add_forecast(ticker: str, year: int, fcf_billions: float, eps_dollars: float
         "pdf_url": pdf_url,
     }
 
-    return save_guidance(guidance)
+    # Save to JSON
+    json_saved = save_guidance(guidance)
+
+    # Append to CSV history
+    csv_saved = append_to_csv(
+        ticker=ticker,
+        forecast_year=year,
+        eps=eps_dollars,
+        fcf=fcf_billions,
+        snap_date=datetime.now().strftime("%Y-%m-%d")
+    )
+
+    return json_saved and csv_saved
 
 
 def get_forecast(ticker: str, year: int = 2026) -> dict | None:
@@ -136,4 +212,52 @@ def get_guidance_summary(ticker: str) -> str:
         eps = data.get("eps_dollars", "N/A")
         source = data.get("source", "Unknown")
         lines.append(f"  {year}: FCF ${fcf}B, EPS ${eps} ({source})")
+    return "\n".join(lines)
+
+
+def read_guidance_csv() -> list[dict]:
+    """Read all guidance history from CSV file."""
+    if not GUIDANCE_CSV.exists():
+        return []
+
+    try:
+        records = []
+        with open(GUIDANCE_CSV, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if row:
+                    records.append(row)
+        return records
+    except Exception:
+        return []
+
+
+def get_csv_summary() -> str:
+    """Get human-readable summary of guidance history."""
+    records = read_guidance_csv()
+
+    if not records:
+        return "No guidance history found. Run discovery to populate."
+
+    lines = ["\n[GUIDANCE HISTORY]"]
+    lines.append("=" * 70)
+
+    # Group by company
+    by_company = {}
+    for record in records:
+        company = record.get('company', 'Unknown')
+        if company not in by_company:
+            by_company[company] = []
+        by_company[company].append(record)
+
+    for company in sorted(by_company.keys()):
+        lines.append(f"\n{company}:")
+        lines.append("-" * 70)
+        for record in by_company[company]:
+            snap_date = record.get('snap_date', 'N/A')
+            year = record.get('forecast_year', 'N/A')
+            eps = record.get('eps', 'N/A')
+            fcf = record.get('fcf', 'N/A')
+            lines.append(f"  {snap_date} | Year {year} | EPS: ${eps} | FCF: ${fcf}B")
+
     return "\n".join(lines)

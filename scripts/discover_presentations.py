@@ -19,7 +19,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.ir_scrapers import scrape_otis_guidance, get_presentation_pdf_url
-from src.guidance_manager import add_forecast, get_guidance_summary, list_all_guidance
+from src.guidance_manager import add_forecast, get_guidance_summary, list_all_guidance, get_csv_summary, read_guidance_csv
 from src.stock_fetcher import extract_fcf_from_pdf
 
 
@@ -108,21 +108,23 @@ def add_manual_presentation(pdf_url: str, ticker: str = "OTIS", year: int = 2026
 
 
 def show_summary():
-    """Show summary of all stored guidance."""
-    print("\n[SUMMARY] Stored Guidance:\n")
+    """Show summary of all stored guidance (JSON + CSV)."""
+    print("\n[SUMMARY] Current Guidance (from JSON):\n")
     all_guidance = list_all_guidance()
 
     if not all_guidance:
         print("No guidance data found. Run discovery first!")
-        return
+    else:
+        for ticker, years in all_guidance.items():
+            print(f"\n{ticker}:")
+            for year, data in years.items():
+                fcf = data.get("fcf_billions", "N/A")
+                eps = data.get("eps_dollars", "N/A")
+                source = data.get("source", "Unknown")
+                print(f"  {year}: FCF ${fcf}B, EPS ${eps} | {source}")
 
-    for ticker, years in all_guidance.items():
-        print(f"\n{ticker}:")
-        for year, data in years.items():
-            fcf = data.get("fcf_billions", "N/A")
-            eps = data.get("eps_dollars", "N/A")
-            source = data.get("source", "Unknown")
-            print(f"  {year}: FCF ${fcf}B, EPS ${eps} | {source}")
+    # Show CSV history
+    print(get_csv_summary())
 
 
 def main():
