@@ -1118,11 +1118,12 @@ def render_single_stock(ticker: str) -> None:
 
         with fc:
             fcf_hist = _stock_fcf_history(ticker)
+            fcf_forecast = _stock_fcf_forecast_2026(ticker)
             if not fcf_hist.empty and fcf_hist["fcf_yield"].notna().any():
                 valid = fcf_hist.dropna(subset=["fcf_yield"])
                 fig_fcf = go.Figure(go.Scatter(
                     x=valid["year"].astype(str), y=valid["fcf_yield"],
-                    mode="lines+markers",
+                    mode="lines+markers", name="Historical",
                     line=dict(color="#8b5cf6", width=2),
                     marker=dict(
                         size=8,
@@ -1133,6 +1134,21 @@ def render_single_stock(ticker: str) -> None:
                     customdata=valid["fcf_b"],
                     hovertemplate="%{x} — Yield: %{y:.1f}%<br>FCF: $%{customdata:.2f}B<extra></extra>",
                 ))
+
+                # Add 2026 forecast point
+                if fcf_forecast:
+                    fig_fcf.add_trace(go.Scatter(
+                        x=["2026"], y=[fcf_forecast["fcf_yield_2026"]],
+                        mode="markers+text", name="2026 Forecast",
+                        marker=dict(size=12, color="#f59e0b",
+                                   symbol="diamond",
+                                   line=dict(width=2, color="white")),
+                        text=[f"{fcf_forecast['fcf_yield_2026']:.1f}%"],
+                        textposition="top center",
+                        textfont=dict(size=10, color="#f59e0b"),
+                        hovertemplate="2026 Forecast — Yield: %{y:.1f}%<extra></extra>",
+                    ))
+
                 fig_fcf.add_hline(y=0, line_dash="dot", line_color="#e5e7eb", line_width=1)
                 fig_fcf.update_layout(**_pro_layout("FCF Yield — Annual", "%"))
                 fig_fcf.update_layout(
@@ -1141,6 +1157,9 @@ def render_single_stock(ticker: str) -> None:
                     yaxis=dict(gridcolor="#f3f4f6",
                                tickfont=dict(size=11, color="#9ca3af"),
                                zeroline=False, showline=False),
+                    showlegend=True,
+                    legend=dict(x=0, y=1, bgcolor="rgba(255,255,255,0.8)",
+                               bordercolor="#e5e7eb", borderwidth=1),
                 )
                 st.plotly_chart(fig_fcf, use_container_width=True, config={"displayModeBar": False})
             else:
