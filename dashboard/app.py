@@ -223,7 +223,8 @@ if meta_df.empty:
             "Free key at https://fred.stlouisfed.org/docs/api/api_key.html"
         )
         st.stop()
-    st.info("First run — loading all macro series from FRED (~60 sec)...")
+    st.info("First run — fetching all macro series from FRED and saving to database. "
+            "This takes ~1 min locally or ~3-5 min on Streamlit Cloud. Please wait and do not refresh.")
     progress_bar = st.progress(0, text="Loading...")
     results = []
     for i, sid in enumerate(ALL_SERIES_IDS):
