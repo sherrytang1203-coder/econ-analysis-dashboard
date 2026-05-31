@@ -1018,14 +1018,6 @@ def render_single_stock(ticker: str) -> None:
             low=ohlcv_df["low"],   close=ohlcv_df["close"],
             increasing_line_color="#10b981", increasing_fillcolor="#10b981",
             decreasing_line_color="#ef4444", decreasing_fillcolor="#ef4444",
-            name="OHLC",
-        ))
-        # Add dashed connecting line through close prices
-        fig_price.add_trace(go.Scatter(
-            x=ohlcv_df["date"], y=ohlcv_df["close"],
-            mode="lines", name="Close",
-            line=dict(color="#8b5cf6", width=1.5, dash="dash"),
-            hovertemplate="%{x|%b %d, %Y} — $%{y:,.2f}<extra></extra>",
         ))
 
     fig_price.update_layout(**_pro_layout("Stock Price (5Y)", "USD ($)", height=300))
