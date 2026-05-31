@@ -307,29 +307,49 @@ def fetch_fcf_yield(ticker: str) -> float | None:
         return None
 
 
-def fetch_fcf_yield_forecast_2026(ticker: str) -> dict | None:
+def fetch_fcf_yield_forecast_2026(ticker: str, fcf_guidance_billions: float = None) -> dict | None:
     """
-    Forecast 2026 Free Cash Flow Yield using fundamental hybrid approach.
+    Forecast 2026 Free Cash Flow Yield.
 
-    Methodology:
-    1. Get analyst consensus EPS growth rate for 2026
-    2. Calculate historical FCF margin (FCF / Revenue) over 3 years
-    3. Calculate historical CapEx as % of revenue over 3 years
-    4. Project 2026 FCF = 2026 Revenue × FCF Margin
-    5. Project 2026 Market Cap = Current Market Cap × (1 + EPS growth)
-    6. Calculate 2026 FCF Yield = 2026 FCF / 2026 Market Cap
+    If fcf_guidance_billions is provided (from company earnings announcements),
+    use it directly. Otherwise calculate using hybrid fundamental approach.
+
+    Args:
+        ticker: Stock ticker
+        fcf_guidance_billions: Official FCF guidance for 2026 in billions (e.g., 1.6 for $1.6B)
+                              If provided, overrides calculated approach.
 
     Returns:
         {
             "fcf_yield_2026": float (%),
-            "fcf_2026": float (dollars),
-            "market_cap_2026": float (dollars),
-            "eps_growth_rate": float (%),
-            "fcf_margin_hist": float (% of revenue),
-            "capex_margin_hist": float (% of revenue),
-            "confidence": str ("High" / "Medium" / "Low")
+            "fcf_2026": float (billions),
+            "market_cap_2026": float (billions),
+            "confidence": str ("Official" if using guidance, "High"/"Medium" if calculated),
+            "source": str (optional - "Company guidance" if official)
         }
     """
+    # If official guidance provided, use it
+    if fcf_guidance_billions is not None and fcf_guidance_billions > 0:
+        try:
+            t = yf.Ticker(ticker)
+            info = t.info
+            market_cap_billions = info.get("marketCap", 0) / 1e9
+
+            if market_cap_billions <= 0:
+                return None
+
+            fcf_yield = (fcf_guidance_billions / market_cap_billions) * 100
+            return {
+                "fcf_yield_2026": round(fcf_yield, 2),
+                "fcf_2026": round(fcf_guidance_billions, 2),
+                "market_cap_2026": round(market_cap_billions, 2),
+                "confidence": "Official",
+                "source": "Company guidance",
+            }
+        except Exception:
+            return None
+
+    # Fall back to calculated approach
     try:
         t = yf.Ticker(ticker)
         info = t.info

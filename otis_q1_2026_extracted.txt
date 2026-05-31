@@ -1,0 +1,282 @@
+=== OTIS Q1 2026 EARNINGS PRESENTATION - FCF EXTRACTION ===
+
+KEY FINDINGS:
+• Adjusted free cash flow (Q1 2026): \n• FCF guidance (Full Year 2026): \.6B to \.65B
+• EPS guidance (Full Year 2026): \.20 to \.24
+• Orders growth: +11%
+• Modernization growth: +30%
+
+FULL EXTRACTED TEXT:
+==================================================
+Q1 2026
+Earnings Call
+April 22, 2026
+© 2026 OTIS WORLDWIDE CORPORATION.Forward-Looking Statements
+Note: All results and expectations in this presentation reflect continuing operations unless otherwise noted.
+This communication contains statements which, to the extent they are not statements of historical or present fact, constitute "forward-looking statements" under the securities laws. From time
+to time, oral or written forward-looking statements may also be included in other information released to the public. These forward-looking statements are intended to provide management’s
+current expectations or plans for Otis’ future operating and financial performance, based on assumptions currently believed to be valid. Forward-looking statements can be identified by the
+use of words such as "believe," "expect," "expectations," "plans," "strategy," "prospects," "estimate," "project," "target," "anticipate," "will," "should," "see," "guidance," "outlook," "medium-term,"
+"near-term," "confident," "goals" and other words of similar meaning in connection with a discussion of future operating or financial performance. Forward-looking statements may include,
+among other things, statements relating to future sales, earnings, cash flow, results of operations, uses of cash, dividends, share repurchases, tax rates, research & development spend,
+restructuring or transformation actions (including UpLiftand related reorganization and outsourcing activities and such actions with respect to our business in China), credit ratings, net
+indebtedness and other measures of financial performance or potential future plans, strategies or transactions, or statements that relate to climate change and our intent to achieve certain
+sustainability targets or other corporate responsibility initiatives, including operational impacts and costs associated therewith, and other statements that are not historical facts. All forward-
+looking statements involve risks, uncertainties and other factors that may cause actual results to differ materially from those expressed or implied in the forward-looking statements. For those
+statements, Otis claims the protection of the safe harbor for forward-looking statements contained in the U.S. Private Securities Litigation Reform Act of 1995. Such risks, uncertainties and other
+factors include, without limitation: (1) the effect of economic conditions in the industries and markets in which Otis and its businesses operate and any changes therein, including financial
+market conditions, fluctuations in commodity prices and other inflationary pressures, interest rates and foreign currency exchange rates, levels of end market demand in construction,
+pandemic health issues, natural disasters, whether as a result of climate change or otherwise, and the financial condition of Otis’ customers and suppliers; (2) the effect of changes in political
+conditions in the U.S. and in other countries in which Otis and its businesses operate, including tensions between the U.S. and China and geopolitical conflicts, including the ongoing conflicts
+and instability in the Middle East and the conflict between Russia and Ukraine on general market conditions, commodity costs, global trade policies and related sanctions, export controls and
+tariffs, and currency exchange rates in the near term and beyond; (3) challenges in the development, production, delivery, support, employee adoption, performance and realization of the
+anticipated benefits of advanced technologies and new products and services; (4) future levels of indebtedness, capital spendingand research and development spending; (5) future
+availability of credit and factors that may affect such availability or costs thereof, including credit market conditions and Otis’ capital structure; (6) the timing and scope of future repurchases
+of Otis’ common stock, which may be suspended at any time due to various factors, including market conditions and the level of other investing activities and uses of cash; (7) fluctuations in
+prices and delays and disruptions in delivery of materials and services from suppliers, whether as a result of changes in general economic conditions, geopolitical conflicts or otherwise; (8) cost
+reduction or containment actions, restructuring or transformation costs and related savings and other consequences thereof, including with respect to UpLift and our China business and
+related impacts of reorganization, change management and outsourcing activities, as applicable; (9) new business and investment opportunities and the realization of anticipated benefits,
+including meeting customer expectations and maintaining our competitiveness; (10) the outcome of legal proceedings, investigations and other contingencies; (11) pension plan assumptions
+and future contributions; (12) the impact of the negotiation of collective bargaining agreements and labor disputes, labor actions, including strikes or work stoppages, and labor inflation in the
+markets in which Otis and its businesses operate globally; (13) the effect of changes in laws, regulations and enforcement priorities in the U.S. and other countries in which Otis and its
+businesses operate; (14) the ability of Otis to retain and hire key personnel; (15) the scope, nature, impact or timing of acquisition and divestiture activity, the integration of acquired businesses
+into existing businesses and realization of synergies and opportunities for growth and innovation and incurrence of related costs; (16) the determination by the Internal Revenue Service (the
+"IRS") and other tax authorities that the distribution or certain related transactions should be treated as taxable transactions in connection with the separation (the "Separation") of Otis and
+Carrier Global Corporation ("Carrier") from United Technologies Corporation (now known as RTX Corporation ("RTX"); and (17) our obligations and disputes that have or may hereafter arise
+under the agreements we entered into with RTX and Carrier in connection with the Separation. The above list of factors is not exhaustive or necessarily in order of importance. For additional
+information on identifying factors that may cause actual results to vary from those stated in forward-looking statements, see Otis’ registration statement on Form 10 and the reports of Otis on
+Forms 10-K, 10-Q and 8-K filed with or furnished to the SEC from time to time. Any forward-looking statement speaks only as of the date on which it is made, and Otis assumes no obligation to
+update or revise such statement, whether as a result of new information, future events or otherwise, except as required by applicable law.
+© 2026 OTIS WORLDWIDE CORPORATION. 2Q1 2026 highlights
+Q1 2026
+Solid start to the year, supported by continued strength in Service...
+5%
+• Organic1 sales up 1%… Service up 5%
+• Repair organic1 sales up 10%
+Service organic1 sales growth
+• Modernization orders up 11%; backlog up 30% at constant currency1
+• New Equipment orders up 1% at constant currency1, up 5% excluding China
+11%
+• Adjusted free cash flow1 of $272M… up 46%
+modernization orders growth2
+…while executing a disciplined capital allocation strategy…
+• Repurchased ~$400M of shares
+3%
+• Increased quarterly dividend by 5% in April… increased 120% since spin
+• Acquired majority stake in WeMaintainTM
+New Equipment backlog growth1
+...and positioning the business for long-term value creation
+$272M
+• Continued investments in Service capabilities
+• Advanced innovation with the launch of Otis Robust , a heavy-duty elevator
+adjusted free cash flow1
+range, and Viva solutions supporting aging populations
+1 See appendix for additional information regarding these non-GAAP financial measures.
+2 At constant currency.
+© 2026 OTIS WORLDWIDE CORPORATION. 3Q1 2026 orders
+Q1 2026 highlights
+(YOY Changes)
+Orders1
+Otis
+Total Otis
+ex-China
+New Equipment 1% 5%
+Modernization 11% 6%
+Metropolitan Transport Authority Austin Convention Center
+Total 4% 5%
+Marseille, France Texas, USA
+Backlog1
+Otis
+Total Otis
+ex-China
+New Equipment 3% 11%
+Modernization 30% 30%
+Total 9% 15%
+Runyuan Community Otis RobustTM
+Harbin, China
+1 At constant currency. See appendix for additional information regarding these
+non-GAAP financial measures.
+© 2026 OTIS WORLDWIDE CORPORATION. 4Q1 2026 results
+($ millions, except per share amounts)
+Sales Operating profit Diluted earnings per share
+GAAP 411 539 GAAP $0.61 $0.87
+Adjusted1
+Adjusted1
+Adjusted
+margin1
+Organic1 1% Adjusted operating profit down $38M at Adjusted EPS1 drivers
+constant currency1, excluding $28M of FX
+FX 5% Operational ($0.07)
+tailwinds
+Net acquisitions/other ~Flat FX $0.05
+Adjusted operating profit margin1 contracted
+Total net sales 6% 130 basis points to 15.4%, driven by Other ($0.01)
+unfavorable segment performance partially
+offset by segment mix
+1 See appendix for additional information regarding these non-GAAP financial measures.
+© 2026 OTIS WORLDWIDE CORPORATION. 5Q1 2026 Service segment results
+Service
+94%
+($ millions)
+Segment Operating
+Profit
+Sales Operating Profit
+Y/Y Y/Y
+11% 4%
+Organic1 Operating
+profit margin
+New
+5%
+Equipment (160) bps
+Operating profit down $10M at constant currency1
++
+Volume
+Organic1 sales up 5%
++
+- Pricing
+• Maintenance & repair up 4%
+-
+Labor & material costs
+• Modernization up 6%
+-
+Investments net of productivity
+Mix
+1 See appendix for additional information regarding these non-GAAP financial measures.
+© 2026 OTIS WORLDWIDE CORPORATION. 6Q1 2026 New Equipment segment results
+New
+Equipment
+6%
+($ millions)
+Segment Operating
+Profit
+Sales Operating Profit
+Y/Y Y/Y
+(1%) (42%)
+Operating
+Organic1
+profit margin
+(5%) (240) bps
+Service
+Organic1 sales down 5% Operating profit down $27M at constant currency1
++
+• Americas down 1% - Productivity
+• EMEA up 1% - Volume
+• Asia down 13% Price & mix
+– Asia Pacific down MSD
+– China down >20%
+1 See appendix for additional information regarding these non-GAAP financial measures.
+© 2026 OTIS WORLDWIDE CORPORATION. 7Addressing near-term Service margin
+Impacts on Q1 Service margin Confidence in recovery - focus areas
+Q1 Investments Monetize Service excellence investments,
+continuing retention improvement and topline
+• ~$5M maintenance excellence
+>
+growth
+• ~$10M sales & pricing capabilities
+• Ongoing onboarding of field FTEs to address
+Ramp up modernization backlog conversion and
+repair and modernization
+sustain repair growth momentum
+Portfolio mix shift to Asia Pacific / China
+Last 12 months portfolio growth
+Drive portfolio growth in highest-value regions
+up ~10%
+>
+up HSD
+Capture flow through of micro pricing initiatives
+up slightly
+started in Q4 2025
+Americas and Asia Pacific China
+EMEA
+Timing of revenue and cost recovery
+Fuel & logistics surcharges implemented
+>
+• Fuel, logistics & other cost headwinds
+Execute up to $20M run-rate cost reduction in
+• Shipment delays due to conflict in the Middle East
+non-front line related activities
+© 2026 OTIS WORLDWIDE CORPORATION. 82026 Industry & Otis outlook1
+Otis
+New Equipment
+Industry updates
+• Net sales of $15.1 to $15.3B; organic2 up
+low to mid-single digits
+2026 VPY:
+Industry units • Americas up • Adjusted operating profit2of ~$2.5B,
+Change in industry units ~8% ~6% ~2% • EMEA up up $20M to $60M at constant currency2;
+• Asia down up $60M to $100M at actual currency
+• Adjusted EPS2 $4.20 to $4.24, up 4% to 5%
+Modernization
+• Adjusted free cash flow2 of $1.6B to 1.65B
+• Disciplined capital allocation
+Aged installed base (units)
+• Share repurchases of ~$800M
+Industry $ value growth
+New Equipment & modernization market outlook remains unchanged
+1 Based on Otis internal estimates for the markets in which we operate.
+2 See appendix for additional information regarding these non-GAAP financial measures.
+© 2026 OTIS WORLDWIDE CORPORATION. 92026 total and organic1 sales outlook
+Prior outlook (Jan 28, 2026) Current outlook
+Service sales
+up mid to high single digits up mid to high single digits
+(Organic)
+New Equipment sales
+down low single digits to flat down low single digits to flat
+(Organic)
+Total sales
+up low to mid-single digits up low to mid-single digits
+(Organic)
+Total net sales $15.0B to $15.3B $15.1B to $15.3B
+1 See appendix for additional information regarding these non-GAAP financial measures.
+© 2026 OTIS WORLDWIDE CORPORATION. 102026 financial outlook
+Organic1 sales Constant currency1 adj. op profit1 CoAndsjutasntet dc ufrreree nccaysha dfljo. w1
+up low to mid-single digits up $20 to $60M operating profit1
+3%
+~$1.625B
+$32M $40M
+$46M $40M
+~ Flat
+Adjusted operating profit1 growth sustained despite incremental investments and geopolitical headwinds
+1 See appendix for additional information regarding these non-GAAP financial measures
+© 2026 OTIS WORLDWIDE CORPORATION. 112026 adjusted EPS1 growth outlook drivers
+~$0.02
++ $20M to $60M
+at constant currency1
+~$0.02
+~$0.08
+$0.03 to $0.10
+FX BOY
+EUR @ 1.18
+$4.05 CNY @ 6.96 $4.20 to $4.24
+1 1
+MSD adjusted EPS1 growth
+1 See appendix for additional information regarding these non-GAAP financial measures.
+© 2026 OTIS WORLDWIDE CORPORATION. 12© 2026 OTIS WORLDWIDE CORPORATION.
+13Appendix
+© 2026 OTIS WORLDWIDE CORPORATION. 14Appendix
+Backlog and orders
+($ billions, at constant currency1)
+Modernization orders
+Remaining performance obligation
+Q1 2026 Y/Y
+Y/Y
+Total Otis 11%
+5%
+19.6
+18.9 Otis ex-China 6%
+18.6
+Modernization 30%
+New Equipment orders
+Maintenance
+2%
+& repair Region Q1 2026 Y/Y
+Total Otis 1%
+Otis ex-China 5%
+New
+3%
+Equipment
+Americas 24%
+EMEA 1%
+Asia (17%)
+1 See additional information regarding these non-GAAP financial measures.
+© 2026 OTIS WORLDWIDE CORPORATION. 15
