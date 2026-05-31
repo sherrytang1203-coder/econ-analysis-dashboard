@@ -997,7 +997,7 @@ def render_single_stock(ticker: str) -> None:
     with col2:
         chart_type = st.radio(
             "", ["Line", "Candle"],
-            index=0, horizontal=True,
+            index=1, horizontal=True,
             label_visibility="collapsed",
             key=f"ct_{ticker}",
         )
