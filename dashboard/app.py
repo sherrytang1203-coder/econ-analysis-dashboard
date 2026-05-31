@@ -85,13 +85,9 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ── Store (app-level singleton, cleared on new deployment) ────────────────────
+# ── Store ─────────────────────────────────────────────────────────────────────
 
-@st.cache_resource
-def _get_store():
-    return Store()
-
-store = _get_store()
+store = Store()
 
 # ── Session state ─────────────────────────────────────────────────────────────
 
