@@ -1,5 +1,11 @@
+import os
 import pandas as pd
 import yfinance as yf
+import requests
+from dotenv import load_dotenv
+from pathlib import Path
+
+load_dotenv(Path(__file__).parent.parent / ".env")
 
 
 def fetch_stock_ohlcv(ticker: str, period: str = "5y") -> pd.DataFrame:
@@ -303,6 +309,41 @@ def fetch_fcf_yield(ticker: str) -> float | None:
         return ((ocf + capex) / mc) * 100
     except Exception:
         return None
+
+
+def fetch_finbox_forward_fcf_yield(ticker: str) -> float | None:
+    """Fetch 2026 forward FCF yield from Finbox API."""
+    api_key = os.getenv("FINBOX_API_KEY", "")
+    if not api_key:
+        return None
+    try:
+        url = f"https://api.finbox.io/v2/company/{ticker}/metrics/forward_fcf_yield"
+        resp = requests.get(url, headers={"Authorization": f"Token {api_key}"}, timeout=10)
+        if resp.status_code == 200:
+            data = resp.json()
+            return float(data.get("forward_fcf_yield"))
+    except Exception:
+        pass
+    return None
+
+
+def fetch_gurufocus_forward_fcf_yield(ticker: str) -> float | None:
+    """Fetch 2026 forward FCF yield from GuruFocus API."""
+    api_key = os.getenv("GURUFOCUS_API_KEY", "")
+    if not api_key:
+        return None
+    try:
+        url = f"https://api.gurufocus.com/public/user/{api_key}/stock/{ticker}/financials"
+        resp = requests.get(url, timeout=10)
+        if resp.status_code == 200:
+            data = resp.json()
+            fcf = data.get("forward_free_cash_flow")
+            mc = data.get("market_cap")
+            if fcf and mc:
+                return (fcf / mc) * 100
+    except Exception:
+        pass
+    return None
 
 
 def fetch_rsi(ticker: str, window: int = 14, weekly: bool = False) -> pd.DataFrame:

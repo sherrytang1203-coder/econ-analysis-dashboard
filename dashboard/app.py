@@ -18,7 +18,10 @@ from src.store import Store
 from src.fetcher import get_fred_client, fred_key_configured
 from src.updater import run_update
 from src.market_fetcher import fetch_market_snapshot, fetch_historical, fetch_sector_performance
-from src.stock_fetcher import fetch_stock_info, fetch_stock_price, fetch_stock_ohlcv, fetch_revenue, fetch_pe_history, fetch_loss_years, fetch_fcf_yield, fetch_fcf_history, fetch_rsi
+from src.stock_fetcher import (fetch_stock_info, fetch_stock_price, fetch_stock_ohlcv,
+                               fetch_revenue, fetch_pe_history, fetch_loss_years,
+                               fetch_fcf_yield, fetch_fcf_history, fetch_rsi,
+                               fetch_finbox_forward_fcf_yield, fetch_gurufocus_forward_fcf_yield)
 from src.news_fetcher import deduplicate_by_similarity
 from src.news_analyzer import get_groq_client, groq_key_configured
 from src.news_pipeline import run_pipeline, needs_run
@@ -198,6 +201,14 @@ def _stock_fcf_history(ticker):
 @st.cache_data(ttl=3600)
 def _stock_rsi(ticker, weekly=False):
     return fetch_rsi(ticker, weekly=weekly)
+
+@st.cache_data(ttl=3600)
+def _finbox_fcf_fwd(ticker):
+    return fetch_finbox_forward_fcf_yield(ticker)
+
+@st.cache_data(ttl=3600)
+def _gurufocus_fcf_fwd(ticker):
+    return fetch_gurufocus_forward_fcf_yield(ticker)
 
 # ── Header ────────────────────────────────────────────────────────────────────
 
@@ -856,7 +867,7 @@ _CARD_CSS = """
 </style>
 """
 
-def _stock_metric_cards(info: dict, fcf_yield, curr_rsi_d, curr_rsi_w) -> None:
+def _stock_metric_cards(info: dict, fcf_yield, curr_rsi_d, curr_rsi_w, fcf_fwd_fb=None, fcf_fwd_gf=None) -> None:
     pe  = info.get("pe_ratio")
     fpe = info.get("forward_pe")
     eps = info.get("eps")
@@ -911,8 +922,18 @@ def _stock_metric_cards(info: dict, fcf_yield, curr_rsi_d, curr_rsi_w) -> None:
         <div class="mval">{v(eps,'.2f','$') if eps else 'N/A'}</div>
       </div>
       <div class="mitem">
-        <div class="mlabel">FCF Yield</div>
+        <div class="mlabel">FCF Yield (TTM)</div>
         <div class="mval {fcf_cls}">{v(fcf_yield,'.1f',suf='%') if fcf_yield is not None else 'N/A'}</div>
+      </div>
+    </div>
+    <div class="mpair" style="margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.1)">
+      <div class="mitem">
+        <div class="mlabel">FCF Yield (2026F - Finbox)</div>
+        <div class="mval">{v(fcf_fwd_fb,'.1f',suf='%') if fcf_fwd_fb is not None else 'N/A'}</div>
+      </div>
+      <div class="mitem">
+        <div class="mlabel">FCF Yield (2026F - GuruFocus)</div>
+        <div class="mval">{v(fcf_fwd_gf,'.1f',suf='%') if fcf_fwd_gf is not None else 'N/A'}</div>
       </div>
     </div>
   </div>
@@ -954,12 +975,14 @@ def render_single_stock(ticker: str) -> None:
     with st.spinner("Loading stock data..."):
         info       = _stock_info(ticker)
         fcf_yield  = _stock_fcf_yield(ticker)
+        fcf_fwd_fb = _finbox_fcf_fwd(ticker)
+        fcf_fwd_gf = _gurufocus_fcf_fwd(ticker)
         rsi_daily  = _stock_rsi(ticker, weekly=False)
         rsi_weekly = _stock_rsi(ticker, weekly=True)
         curr_rsi_d = float(rsi_daily["rsi"].iloc[-1])  if not rsi_daily.empty  else None
         curr_rsi_w = float(rsi_weekly["rsi"].iloc[-1]) if not rsi_weekly.empty else None
 
-        _stock_metric_cards(info, fcf_yield, curr_rsi_d, curr_rsi_w)
+        _stock_metric_cards(info, fcf_yield, curr_rsi_d, curr_rsi_w, fcf_fwd_fb, fcf_fwd_gf)
 
     st.divider()
 
