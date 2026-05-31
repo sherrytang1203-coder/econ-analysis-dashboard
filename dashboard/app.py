@@ -253,16 +253,55 @@ def _delta_str(latest: float, prev: float) -> str | None:
     return f"{pct:+.2f}%"
 
 
-def _range_buttons():
-    return dict(
-        rangeselector=dict(buttons=[
-            dict(count=1,  label="1Y",  step="year",  stepmode="backward"),
-            dict(count=5,  label="5Y",  step="year",  stepmode="backward"),
-            dict(count=10, label="10Y", step="year",  stepmode="backward"),
-            dict(step="all", label="All"),
-        ]),
-        rangeslider=dict(visible=False),
+def _apply_range_buttons(fig: go.Figure, df: pd.DataFrame,
+                         x_col: str = "date", y_col: str = "value",
+                         fixed_y: list | None = None) -> go.Figure:
+    """Add 1Y/5Y/10Y/All buttons that rescale both axes. Defaults to 1Y view."""
+    today = pd.Timestamp.today().normalize()
+    cutoffs = [
+        ("1Y",  today - pd.DateOffset(years=1)),
+        ("5Y",  today - pd.DateOffset(years=5)),
+        ("10Y", today - pd.DateOffset(years=10)),
+        ("All", None),
+    ]
+
+    def _y(start):
+        if fixed_y:
+            return fixed_y
+        sub = (df[df[x_col] >= start][y_col].dropna()
+               if start is not None else df[y_col].dropna())
+        if sub.empty:
+            return [0, 1]
+        lo, hi = float(sub.min()), float(sub.max())
+        pad = max((hi - lo) * 0.08, abs(hi) * 0.01, 1e-6)
+        return [lo - pad, hi + pad]
+
+    buttons, default_x0 = [], None
+    for i, (label, start) in enumerate(cutoffs):
+        x0 = (start.isoformat() if start is not None
+               else (df[x_col].min().isoformat() if not df.empty else "2000-01-01"))
+        if i == 0:
+            default_x0 = x0
+        buttons.append(dict(
+            label=label, method="relayout",
+            args=[{"xaxis.range": [x0, today.isoformat()],
+                   "yaxis.range": _y(start)}],
+        ))
+
+    fig.update_layout(
+        updatemenus=[dict(
+            type="buttons", direction="right", showactive=True, active=0,
+            x=1.0, xanchor="right", y=1.0, yanchor="bottom",
+            pad={"l": 0, "r": 0, "t": 4, "b": 4},
+            buttons=buttons,
+            bgcolor="rgba(248,249,250,0.95)",
+            bordercolor="#e5e7eb", borderwidth=1,
+            font=dict(size=10, color="#6b7280"),
+        )],
+        xaxis=dict(range=[default_x0, today.isoformat()]),
+        yaxis=dict(range=_y(cutoffs[0][1])),
     )
+    return fig
 
 
 _PRO_CSS = """
@@ -335,13 +374,15 @@ def _rsi_chart(daily_df: pd.DataFrame, weekly_df: pd.DataFrame) -> go.Figure:
     fig.update_layout(
         yaxis=dict(range=[0, 100], gridcolor="#f3f4f6",
                    tickfont=dict(size=11, color="#9ca3af"), zeroline=False, showline=False),
-        xaxis=dict(**_range_buttons(), gridcolor="#f3f4f6",
+        xaxis=dict(gridcolor="#f3f4f6",
                    tickfont=dict(size=11, color="#9ca3af"), showline=False),
         legend=dict(orientation="h", x=0, y=1.08,
                     font=dict(size=11, color="#6b7280"),
                     bgcolor="rgba(0,0,0,0)"),
         showlegend=True,
     )
+    ref_df = daily_df if not daily_df.empty else weekly_df
+    _apply_range_buttons(fig, ref_df, x_col="date", y_col="rsi", fixed_y=[0, 100])
     return fig
 
 
@@ -364,8 +405,8 @@ def _line_chart(df: pd.DataFrame, title: str, yaxis: str,
         margin=dict(l=50, r=20, t=60, b=40),
         hovermode="x unified",
         showlegend=False,
-        xaxis=_range_buttons(),
     )
+    _apply_range_buttons(fig, df, x_col, y_col)
     return fig
 
 
@@ -556,8 +597,9 @@ def render_market_leading_charts():
             margin=dict(l=50, r=20, t=60, b=40),
             hovermode="x unified",
             legend=dict(x=0.01, y=0.92),
-            xaxis=_range_buttons(),
         )
+        combined_yc = pd.concat([df10, df2]).dropna(subset=["value"])
+        _apply_range_buttons(fig_yc, combined_yc, "date", "value")
         st.plotly_chart(fig_yc, use_container_width=True)
 
     with c4:
@@ -578,8 +620,8 @@ def render_market_leading_charts():
                 height=320,
                 margin=dict(l=50, r=20, t=60, b=40),
                 showlegend=False,
-                xaxis=_range_buttons(),
             )
+            _apply_range_buttons(fig_sp, spread, "date", "value")
             st.plotly_chart(fig_sp, use_container_width=True)
         else:
             st.info("Sync FRED data to see the yield spread chart.")
@@ -891,10 +933,7 @@ def render_single_stock(ticker: str) -> None:
                 hovertemplate="%{x|%b %d, %Y} — $%{y:,.2f}<extra></extra>",
             ))
         fig_price.update_layout(**_pro_layout("Stock Price (5Y)", "USD ($)", height=300))
-        fig_price.update_layout(
-            xaxis=dict(**_range_buttons(), gridcolor="#f3f4f6",
-                       tickfont=dict(size=11, color="#9ca3af"), showline=False),
-        )
+        _apply_range_buttons(fig_price, price_df, "date", "close")
         st.plotly_chart(fig_price, use_container_width=True)
         st.plotly_chart(_rsi_chart(rsi_daily, rsi_weekly), use_container_width=True)
 
