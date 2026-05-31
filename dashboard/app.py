@@ -107,7 +107,7 @@ st.markdown("""
 
 # ── Session state ─────────────────────────────────────────────────────────────
 
-if "store" not in st.session_state:
+if "store" not in st.session_state or not hasattr(st.session_state.store, "add_to_watchlist"):
     st.session_state.store = Store()
 if "update_results" not in st.session_state:
     st.session_state.update_results = None
