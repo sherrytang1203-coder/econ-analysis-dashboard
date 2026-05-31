@@ -1026,8 +1026,8 @@ def render_single_stock(ticker: str) -> None:
     fig_price.update_layout(
         plot_bgcolor="white",
         paper_bgcolor="white",
-        height=420,
-        margin=dict(l=0, r=4, t=4, b=50),
+        height=480,
+        margin=dict(l=0, r=4, t=4, b=80),
         hovermode="x unified",
         showlegend=False,
         dragmode=False,
@@ -1039,8 +1039,9 @@ def render_single_stock(ticker: str) -> None:
             rangeslider_visible=False,
             automargin=True,
             showticklabels=True,
-            nticks=4,
-            tickformat="%b %Y",
+            nticks=3,
+            tickformat="%b %y",
+            tickangle=-45,
         ),
         yaxis=dict(
             side="right",
@@ -1056,7 +1057,7 @@ def render_single_stock(ticker: str) -> None:
             font=dict(color="black", size=12),
         ),
     )
-    st.plotly_chart(fig_price, use_container_width=True, config={"displayModeBar": False})
+    st.plotly_chart(fig_price, use_container_width=True, config={"displayModeBar": False, "responsive": True})
 
     with st.container(border=True):
         st.plotly_chart(_rsi_chart(rsi_daily, rsi_weekly), use_container_width=True, config={"displayModeBar": False})
