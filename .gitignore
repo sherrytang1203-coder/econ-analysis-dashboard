@@ -1,0 +1,26 @@
+# Secrets
+.env
+
+# Local data (SQLite DB and user-added stocks persist locally only)
+data/econ_data.db
+data/custom_stocks.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.Python
+*.egg-info/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
