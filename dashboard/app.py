@@ -89,6 +89,23 @@ st.markdown("""
 
 store = Store()
 
+# ── Supabase connection diagnostic ────────────────────────────────────────────
+if store.is_supabase:
+    try:
+        test_write = store._supa.table("series_metadata").upsert({
+            "series_id": "__test__", "name": "test", "category": "test",
+            "unit": "", "frequency": "", "last_updated": "", "last_fetched": "",
+        }).execute()
+        test_read = store._supa.table("series_metadata").select("series_id").eq("series_id", "__test__").execute()
+        if test_read.data:
+            store._supa.table("series_metadata").delete().eq("series_id", "__test__").execute()
+        else:
+            st.error("Supabase write succeeded but read returned empty — check RLS policies: run `ALTER TABLE series_metadata DISABLE ROW LEVEL SECURITY;` in SQL Editor.")
+            st.stop()
+    except Exception as e:
+        st.error(f"Supabase connection failed: {e}. Check SUPABASE_URL and SUPABASE_KEY in Streamlit Secrets.")
+        st.stop()
+
 # ── Session state ─────────────────────────────────────────────────────────────
 
 if "update_results" not in st.session_state:
