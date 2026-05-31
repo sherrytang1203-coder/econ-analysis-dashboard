@@ -968,18 +968,18 @@ def render_single_stock(ticker: str) -> None:
     price_df = _stock_price(ticker, "5y")
     ohlcv_df = _stock_ohlcv(ticker, "5y")
 
-    # External controls: timeframe left, chart type right
-    ctrl_l, ctrl_r = st.columns([5, 1])
-    with ctrl_l:
+    # Controls: timeframe left, chart type right
+    col1, col2 = st.columns([1, 1])
+    with col1:
         timeframe = st.radio(
-            "", ["1M", "6M", "1Y", "5Y", "All"],
+            "Timeframe", ["1M", "6M", "1Y", "5Y", "All"],
             index=2, horizontal=True,
             label_visibility="collapsed",
             key=f"tf_{ticker}",
         )
-    with ctrl_r:
+    with col2:
         chart_type = st.radio(
-            "", ["Line", "Candle"],
+            "Type", ["Line", "Candle"],
             index=0, horizontal=True,
             label_visibility="collapsed",
             key=f"ct_{ticker}",
