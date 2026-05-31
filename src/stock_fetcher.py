@@ -1,5 +1,7 @@
 import pandas as pd
 import yfinance as yf
+import requests
+import re
 
 
 def fetch_stock_ohlcv(ticker: str, period: str = "5y") -> pd.DataFrame:
@@ -454,6 +456,71 @@ def fetch_fcf_yield_forecast_2026(ticker: str) -> dict | None:
 
     except Exception:
         return None
+
+
+def extract_guidance_from_pdf(pdf_url: str) -> dict | None:
+    """
+    Extract forward guidance (earnings, FCF) from earnings presentation PDF.
+
+    Searches for keywords like "guidance", "outlook", "forecast", "2026", "2027"
+    and extracts associated numbers.
+
+    Returns:
+        {
+            "earnings_guidance": str (e.g., "5-10% growth"),
+            "fcf_guidance": str (e.g., "$2.5B"),
+            "revenue_guidance": str,
+            "raw_text": str (first 5000 chars of PDF for manual review)
+        }
+    """
+    try:
+        import pdfplumber
+
+        # Download PDF
+        resp = requests.get(pdf_url, timeout=10)
+        if resp.status_code != 200:
+            return None
+
+        # Extract text from PDF
+        pdf_bytes = resp.content
+        text = ""
+
+        # Use pdfplumber to extract text
+        import io
+        with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+            for page in pdf.pages[:10]:  # First 10 pages only
+                text += page.extract_text() or ""
+
+        if not text:
+            return None
+
+        # Search for guidance sections
+        guidance_section = ""
+        keywords = ["guidance", "outlook", "forecast", "2026", "2027", "full year"]
+
+        lines = text.split("\n")
+        for i, line in enumerate(lines):
+            if any(kw.lower() in line.lower() for kw in keywords):
+                # Capture surrounding context (5 lines before and after)
+                start = max(0, i - 5)
+                end = min(len(lines), i + 15)
+                guidance_section += "\n".join(lines[start:end]) + "\n---\n"
+
+        # Try to extract numbers (revenue, earnings, FCF)
+        numbers = re.findall(r'\$[\d,.]+[BM]?|\d+[.]\d+%', guidance_section)
+
+        return {
+            "earnings_guidance": "See raw_text",
+            "fcf_guidance": "See raw_text",
+            "numbers_found": numbers,
+            "guidance_section": guidance_section[:2000],  # First 2000 chars
+            "raw_text": text[:3000],  # First 3000 chars for review
+        }
+
+    except ImportError:
+        return {"error": "pdfplumber not installed. Run: pip install pdfplumber"}
+    except Exception as e:
+        return {"error": str(e)}
 
 
 def fetch_rsi(ticker: str, window: int = 14, weekly: bool = False) -> pd.DataFrame:
