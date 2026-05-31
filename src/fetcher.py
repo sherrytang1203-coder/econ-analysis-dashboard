@@ -130,7 +130,7 @@ def _fetch_yfinance(ticker: str, observation_start: str = None) -> pd.Series:
     try:
         import yfinance as yf
         kwargs = {"period": "max"} if not observation_start else {"start": observation_start}
-        df = yf.download(ticker, progress=False, **kwargs)
+        df = yf.download(ticker, progress=False, timeout=10, **kwargs)
         if df.empty:
             return pd.Series(dtype=float)
         close = df["Close"]

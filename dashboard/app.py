@@ -211,9 +211,14 @@ if st.session_state.update_results:
 meta_df = store.get_all_metadata()
 if meta_df.empty:
     fred = get_fred_client()
-    msg = ("Loading available data from BLS & Yahoo Finance (no FRED key)..."
-           if fred is None else "First run — loading all macro series from FRED (~60 sec)...")
-    st.info(msg)
+    if fred is None:
+        st.warning(
+            "No FRED API key found — add `FRED_API_KEY` to your Streamlit secrets, "
+            "then click **Sync FRED Data** to load all indicators. "
+            "Free key at https://fred.stlouisfed.org/docs/api/api_key.html"
+        )
+        st.stop()
+    st.info("First run — loading all macro series from FRED (~60 sec)...")
     progress_bar = st.progress(0, text="Loading...")
     results = []
     for i, sid in enumerate(ALL_SERIES_IDS):
