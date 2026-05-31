@@ -959,55 +959,96 @@ def render_single_stock(ticker: str) -> None:
     # ── Price & Technical Analysis ────────────────────────────────────────────
     st.markdown('<div class="sec-label">Price &amp; Technical Analysis</div>',
                 unsafe_allow_html=True)
+
+    price_df = _stock_price(ticker, "5y")
+    ohlcv_df = _stock_ohlcv(ticker, "5y")
+
+    # External controls: timeframe left, chart type right
+    ctrl_l, ctrl_r = st.columns([5, 1])
+    with ctrl_l:
+        timeframe = st.radio(
+            "", ["1M", "6M", "1Y", "5Y", "All"],
+            index=2, horizontal=True,
+            label_visibility="collapsed",
+            key=f"tf_{ticker}",
+        )
+    with ctrl_r:
+        chart_type = st.radio(
+            "", ["Line", "Candle"],
+            index=0, horizontal=True,
+            label_visibility="collapsed",
+            key=f"ct_{ticker}",
+        )
+
+    # Filter by selected timeframe
+    _tf_offsets = {"1M": pd.DateOffset(months=1), "6M": pd.DateOffset(months=6),
+                   "1Y": pd.DateOffset(years=1),  "5Y": pd.DateOffset(years=5)}
+    if timeframe in _tf_offsets:
+        _cutoff = pd.Timestamp.today() - _tf_offsets[timeframe]
+        fp = price_df[price_df["date"] >= _cutoff] if not price_df.empty else price_df
+        fo = ohlcv_df[ohlcv_df["date"] >= _cutoff] if not ohlcv_df.empty else ohlcv_df
+    else:
+        fp, fo = price_df, ohlcv_df
+
+    # Y bounds
+    if chart_type == "Candle" and not fo.empty:
+        y_lo = float(fo["low"].min())  * 0.995
+        y_hi = float(fo["high"].max()) * 1.005
+    elif not fp.empty:
+        y_lo = float(fp["close"].min()) * 0.992
+        y_hi = float(fp["close"].max()) * 1.008
+    else:
+        y_lo, y_hi = 0, 1
+
+    fig_price = go.Figure()
+    if chart_type == "Line" and not fp.empty:
+        fig_price.add_trace(go.Scatter(
+            x=fp["date"], y=fp["close"],
+            mode="lines",
+            line=dict(color="#30d158", width=2),
+            fill="tozeroy", fillcolor="rgba(48,209,88,0.12)",
+            hovertemplate="%{x|%b %d, %Y} — $%{y:,.2f}<extra></extra>",
+        ))
+    elif chart_type == "Candle" and not fo.empty:
+        fig_price.add_trace(go.Candlestick(
+            x=fo["date"],
+            open=fo["open"], high=fo["high"],
+            low=fo["low"],   close=fo["close"],
+            increasing_line_color="#30d158", increasing_fillcolor="#30d158",
+            decreasing_line_color="#ff453a", decreasing_fillcolor="#ff453a",
+        ))
+
+    fig_price.update_layout(
+        plot_bgcolor="#1c1c1e",
+        paper_bgcolor="#1c1c1e",
+        height=380,
+        margin=dict(l=0, r=4, t=4, b=0),
+        hovermode="x unified",
+        showlegend=False,
+        xaxis=dict(
+            showgrid=True,
+            gridcolor="rgba(255,255,255,0.06)",
+            tickfont=dict(color="rgba(255,255,255,0.4)", size=11),
+            showline=False, zeroline=False,
+            rangeslider_visible=False,
+        ),
+        yaxis=dict(
+            side="right",
+            range=[y_lo, y_hi],
+            showgrid=True,
+            gridcolor="rgba(255,255,255,0.07)",
+            tickfont=dict(color="rgba(255,255,255,0.45)", size=11),
+            zeroline=False, showline=False,
+            tickprefix="$",
+        ),
+        hoverlabel=dict(
+            bgcolor="#2c2c2e", bordercolor="rgba(255,255,255,0.15)",
+            font=dict(color="white", size=12),
+        ),
+    )
+    st.plotly_chart(fig_price, use_container_width=True)
+
     with st.container(border=True):
-        price_df  = _stock_price(ticker, "5y")
-        ohlcv_df  = _stock_ohlcv(ticker, "5y")
-        fig_price = go.Figure()
-
-        # Trace 0 — line (default)
-        if not price_df.empty:
-            fig_price.add_trace(go.Scatter(
-                x=price_df["date"], y=price_df["close"],
-                mode="lines", name="Line", visible=True,
-                line=dict(color="#2563eb", width=2),
-                fill="tozeroy", fillcolor="rgba(37,99,235,0.06)",
-                hovertemplate="%{x|%b %d, %Y} — $%{y:,.2f}<extra></extra>",
-            ))
-
-        # Trace 1 — candlestick (hidden by default)
-        if not ohlcv_df.empty:
-            fig_price.add_trace(go.Candlestick(
-                x=ohlcv_df["date"],
-                open=ohlcv_df["open"], high=ohlcv_df["high"],
-                low=ohlcv_df["low"],  close=ohlcv_df["close"],
-                name="Candle", visible=False,
-                increasing_line_color="#10b981", increasing_fillcolor="#10b981",
-                decreasing_line_color="#ef4444", decreasing_fillcolor="#ef4444",
-            ))
-
-        fig_price.update_layout(**_pro_layout("Stock Price (5Y)", "USD ($)", height=320))
-
-        # Chart-type toggle (left side)
-        fig_price.update_layout(updatemenus=[dict(
-            type="buttons", direction="right", showactive=True, active=0,
-            x=0, xanchor="left", y=1.0, yanchor="bottom",
-            buttons=[
-                dict(label="Line",   method="update",
-                     args=[{"visible": [True, False]},
-                            {"xaxis.rangeslider.visible": False}]),
-                dict(label="Candle", method="update",
-                     args=[{"visible": [False, True]},
-                            {"xaxis.rangeslider.visible": False}]),
-            ],
-            bgcolor="rgba(248,249,250,0.95)",
-            bordercolor="#e5e7eb", borderwidth=1,
-            font=dict(size=10, color="#6b7280"),
-        )])
-
-        # Timeframe buttons (right side) — appended by _apply_range_buttons
-        _apply_range_buttons(fig_price, price_df, "date", "close")
-        fig_price.update_layout(xaxis_rangeslider_visible=False)
-        st.plotly_chart(fig_price, use_container_width=True)
         st.plotly_chart(_rsi_chart(rsi_daily, rsi_weekly), use_container_width=True)
 
     # ── Fundamentals ─────────────────────────────────────────────────────────
