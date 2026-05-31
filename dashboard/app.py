@@ -214,6 +214,7 @@ if st.session_state.update_results:
 
 meta_df = store.get_all_metadata()
 if meta_df.empty:
+    st.session_state.update_results = None  # clear stale results from previous session
     fred = get_fred_client()
     if fred is None:
         st.warning(
