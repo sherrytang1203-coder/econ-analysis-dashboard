@@ -536,7 +536,7 @@ def render_capital_markets():
             use_container_width=True,
             on_select="rerun",
             key=f"sector_chart_{selected_period}",
-            config={"displayModeBar": False},
+            config={"staticPlot": True},
         )
 
         # ── 5-year drill-down ─────────────────────────────────────────────────
@@ -556,7 +556,7 @@ def render_capital_markets():
                     hist_df, f"{sector_name} ({clicked_ticker})", "Price (USD)",
                     x_col="date", y_col="close", color="#5C6BC0",
                 )
-                st.plotly_chart(fig5, use_container_width=True, config={"displayModeBar": False})
+                st.plotly_chart(fig5, use_container_width=True, config={"staticPlot": True})
             else:
                 st.warning(f"Could not load 5-year data for {sector_name}.")
         else:
@@ -604,14 +604,14 @@ def render_market_leading_charts():
         st.plotly_chart(
             _line_chart(sp_df, "S&P 500", "Price", x_col="date", y_col="close", color="#2196F3"),
             use_container_width=True,
-            config={"displayModeBar": False},
+            config={"staticPlot": True},
         )
     with c2:
         vix_df = _historical("^VIX")
         st.plotly_chart(
             _line_chart(vix_df, "VIX (Volatility)", "Index", x_col="date", y_col="close", color="#FF5722"),
             use_container_width=True,
-            config={"displayModeBar": False},
+            config={"staticPlot": True},
         )
 
     c3, c4 = st.columns(2)
@@ -641,7 +641,7 @@ def render_market_leading_charts():
         )
         combined_yc = pd.concat([df10, df2]).dropna(subset=["value"])
         _apply_range_buttons(fig_yc, combined_yc, "date", "value")
-        st.plotly_chart(fig_yc, use_container_width=True, config={"displayModeBar": False})
+        st.plotly_chart(fig_yc, use_container_width=True, config={"staticPlot": True})
 
     with c4:
         if not df10.empty and not df2.empty:
@@ -663,7 +663,7 @@ def render_market_leading_charts():
                 showlegend=False,
             )
             _apply_range_buttons(fig_sp, spread, "date", "value")
-            st.plotly_chart(fig_sp, use_container_width=True, config={"displayModeBar": False})
+            st.plotly_chart(fig_sp, use_container_width=True, config={"staticPlot": True})
         else:
             st.info("Sync FRED data to see the yield spread chart.")
 
@@ -1049,10 +1049,10 @@ def render_single_stock(ticker: str) -> None:
             font=dict(color="black", size=12),
         ),
     )
-    st.plotly_chart(fig_price, use_container_width=True, config={"displayModeBar": False})
+    st.plotly_chart(fig_price, use_container_width=True, config={"staticPlot": True})
 
     with st.container(border=True):
-        st.plotly_chart(_rsi_chart(rsi_daily, rsi_weekly), use_container_width=True, config={"displayModeBar": False})
+        st.plotly_chart(_rsi_chart(rsi_daily, rsi_weekly), use_container_width=True, config={"staticPlot": True})
 
     # ── Fundamentals ─────────────────────────────────────────────────────────
     st.markdown('<div class="sec-label">Fundamentals</div>', unsafe_allow_html=True)
@@ -1105,7 +1105,7 @@ def render_single_stock(ticker: str) -> None:
                                categoryarray=all_year_strs, gridcolor="#f3f4f6",
                                tickfont=dict(size=11, color="#9ca3af"), showline=False),
                 )
-                st.plotly_chart(fig_pe, use_container_width=True, config={"displayModeBar": False})
+                st.plotly_chart(fig_pe, use_container_width=True, config={"staticPlot": True})
                 if loss_years:
                     st.caption(f"✕ Loss year(s): {', '.join(str(y) for y in sorted(loss_years))}")
             else:
@@ -1128,7 +1128,7 @@ def render_single_stock(ticker: str) -> None:
                                tickfont=dict(size=11, color="#9ca3af"),
                                zeroline=False, showline=False),
                 )
-                st.plotly_chart(fig_rev, use_container_width=True, config={"displayModeBar": False})
+                st.plotly_chart(fig_rev, use_container_width=True, config={"staticPlot": True})
             else:
                 st.info("Revenue data unavailable.")
 
@@ -1158,7 +1158,7 @@ def render_single_stock(ticker: str) -> None:
                                tickfont=dict(size=11, color="#9ca3af"),
                                zeroline=False, showline=False),
                 )
-                st.plotly_chart(fig_fcf, use_container_width=True, config={"displayModeBar": False})
+                st.plotly_chart(fig_fcf, use_container_width=True, config={"staticPlot": True})
             else:
                 st.info("FCF Yield data unavailable.")
 
