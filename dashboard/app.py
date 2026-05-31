@@ -1170,7 +1170,7 @@ def render_single_stock(ticker: str) -> None:
                                bordercolor="#e5e7eb", borderwidth=1),
                     dragmode=False,
                 )
-                st.plotly_chart(fig_fcf, use_container_width=True, config={"staticPlot": True})
+                st.plotly_chart(fig_fcf, use_container_width=True, config={"displayModeBar": False, "scrollZoom": False})
             else:
                 st.info("FCF Yield data unavailable.")
 
