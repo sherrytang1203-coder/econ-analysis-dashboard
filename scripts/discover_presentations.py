@@ -25,6 +25,9 @@ from src.ir_config import (
     load_ir_presentations, add_ir_presentation, batch_process_all_presentations,
     get_ir_config_summary, process_ir_presentation
 )
+from src.ir_discovery import (
+    discover_and_add_pdfs, load_ir_registry, get_ir_registry_summary, manual_add_pdf
+)
 
 
 def discover_otis():
@@ -182,23 +185,88 @@ def add_to_config():
         print("[ERROR] Failed to add presentation")
 
 
+def discover_from_ir_website():
+    """Discover PDFs from investor relations website."""
+    print("\n[*] Discover PDFs from IR website\n")
+
+    company = input("Company ticker (e.g., OTIS): ").strip().upper()
+    ir_url = input("IR website URL (e.g., https://www.otisinvestors.com/...): ").strip()
+
+    if not company or not ir_url:
+        print("[ERROR] Company and URL required")
+        return
+
+    result = discover_and_add_pdfs(company, ir_url)
+
+    if result["status"] == "success":
+        print(f"\n[OK] Discovered {len(result['pdfs_found'])} PDF(s)")
+        print("Updated ir_presentations.csv")
+    else:
+        print(f"\n[!] Status: {result['status']}")
+        if result["error"]:
+            print(f"Error: {result['error']}")
+        print("\nTry manually adding PDFs:")
+        print(f"  python scripts/discover_presentations.py --add-pdf-manual")
+
+
+def add_pdf_manually():
+    """Manually add a PDF URL when auto-discovery fails."""
+    print("\n[+] Manually add PDF URL\n")
+
+    company = input("Company ticker (e.g., OTIS): ").strip().upper()
+    ir_url = input("IR website URL: ").strip()
+    pdf_url = input("PDF URL (copy from browser): ").strip()
+
+    if not all([company, ir_url, pdf_url]):
+        print("[ERROR] All fields required")
+        return
+
+    success = manual_add_pdf(company, ir_url, pdf_url)
+
+    if success:
+        print(f"[OK] Added PDF for {company}")
+    else:
+        print("[ERROR] Failed to add PDF")
+
+
+def show_ir_registry():
+    """Show IR website registry."""
+    print(get_ir_registry_summary())
+
+
 def main():
     import argparse
 
-    parser = argparse.ArgumentParser(description="Discover and add presentations from IR websites")
-    parser.add_argument("--discover", action="store_true", help="Discover presentations from OTIS")
-    parser.add_argument("--add-manual", type=str, help="Add a presentation PDF URL manually")
-    parser.add_argument("--batch", action="store_true", help="Batch process all presentations from ir_presentations.csv")
-    parser.add_argument("--config", action="store_true", help="Show IR presentations config")
-    parser.add_argument("--add-config", action="store_true", help="Interactively add to ir_presentations.csv")
-    parser.add_argument("--summary", action="store_true", help="Show all stored guidance")
+    parser = argparse.ArgumentParser(description="Discover and extract guidance from IR presentations")
+
+    # IR Discovery (new)
+    parser.add_argument("--discover-ir", action="store_true", help="Discover PDFs from IR website URL")
+    parser.add_argument("--ir-registry", action="store_true", help="Show IR website registry")
+    parser.add_argument("--add-pdf-manual", action="store_true", help="Manually add PDF URL")
+
+    # Legacy/Original discovery
+    parser.add_argument("--discover", action="store_true", help="Discover presentations from OTIS (legacy)")
+    parser.add_argument("--add-manual", type=str, help="Add presentation PDF URL directly")
+
+    # Batch processing
+    parser.add_argument("--batch", action="store_true", help="Batch process all PDFs")
+    parser.add_argument("--config", action="store_true", help="Show batch config")
+    parser.add_argument("--add-config", action="store_true", help="Add to batch config")
+
+    # Summary
+    parser.add_argument("--summary", action="store_true", help="Show all guidance")
     parser.add_argument("--ticker", type=str, default="OTIS", help="Stock ticker")
     parser.add_argument("--year", type=int, default=2026, help="Forecast year")
 
     args = parser.parse_args()
 
-    if args.summary or not any([args.discover, args.add_manual, args.batch, args.config, args.add_config]):
-        show_summary()
+    # Determine action
+    if args.discover_ir:
+        discover_from_ir_website()
+    elif args.ir_registry:
+        show_ir_registry()
+    elif args.add_pdf_manual:
+        add_pdf_manually()
     elif args.discover:
         discover_otis()
     elif args.add_manual:
@@ -209,6 +277,8 @@ def main():
         show_ir_config()
     elif args.add_config:
         add_to_config()
+    elif args.summary or not any(vars(args).values()):
+        show_summary()
 
 
 if __name__ == "__main__":

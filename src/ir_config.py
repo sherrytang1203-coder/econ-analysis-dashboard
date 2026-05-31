@@ -226,32 +226,42 @@ def process_ir_presentation(company: str, url: str, forecast_year: int = 2026) -
 
 def batch_process_all_presentations(forecast_year: int = 2026) -> list[dict]:
     """
-    Process all IR presentations from the config file.
+    Process all IR presentations from the IR registry.
+
+    The IR registry (from ir_discovery.py) stores company -> PDF URLs mappings.
+    This processes all discovered PDFs.
 
     Returns:
         List of results for each presentation
     """
-    presentations = load_ir_presentations()
+    try:
+        from src.ir_discovery import load_ir_registry
+    except ImportError:
+        print("[ERROR] ir_discovery module not available")
+        return []
+
+    ir_registry = load_ir_registry()
     results = []
 
-    for pres in presentations:
-        company = pres.get('company')
-        url = pres.get('url')
+    for record in ir_registry:
+        company = record.get('company')
+        pdfs = record.get('pdf_urls', [])
 
-        if not company or not url:
+        if not company or not pdfs:
             continue
 
-        print(f"Processing {company}: {pres.get('description', 'N/A')}")
-        result = process_ir_presentation(company, url, forecast_year)
-        results.append(result)
+        for pdf_url in pdfs:
+            print(f"Processing {company}: {pdf_url.split('/')[-1]}")
+            result = process_ir_presentation(company, pdf_url, forecast_year)
+            results.append(result)
 
-        # Print status
-        if result["status"] == "success":
-            print(f"  [OK] FCF: ${result['fcf_midpoint']}B, EPS: ${result['eps_midpoint']}")
-        elif result["status"] == "no_guidance":
-            print(f"  [WARN] No guidance found in PDF")
-        else:
-            print(f"  [ERROR] {result.get('error', 'Unknown error')}")
+            # Print status
+            if result["status"] == "success":
+                print(f"  [OK] FCF: ${result['fcf_midpoint']}B, EPS: ${result['eps_midpoint']}")
+            elif result["status"] == "no_guidance":
+                print(f"  [WARN] No guidance found in PDF")
+            else:
+                print(f"  [ERROR] {result.get('error', 'Unknown error')}")
 
     return results
 
