@@ -10,16 +10,28 @@ from fredapi import Fred
 load_dotenv(Path(__file__).parent.parent / ".env")
 
 
+def _get_secret(key: str) -> str:
+    """Read from env / .env first, fall back to st.secrets on Streamlit Cloud."""
+    val = os.environ.get(key, "")
+    if not val:
+        try:
+            import streamlit as st
+            val = st.secrets.get(key, "")
+        except Exception:
+            pass
+    return val
+
+
 def get_fred_client() -> Fred | None:
     """Return a Fred client, or None if no API key is configured."""
-    api_key = os.environ.get("FRED_API_KEY", "")
+    api_key = _get_secret("FRED_API_KEY")
     if not api_key or api_key == "your_api_key_here":
         return None
     return Fred(api_key=api_key)
 
 
 def fred_key_configured() -> bool:
-    api_key = os.environ.get("FRED_API_KEY", "")
+    api_key = _get_secret("FRED_API_KEY")
     return bool(api_key) and api_key != "your_api_key_here"
 
 

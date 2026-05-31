@@ -7,6 +7,18 @@ from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).parent.parent / ".env")
 
+
+def _get_secret(key: str) -> str:
+    val = os.environ.get(key, "")
+    if not val:
+        try:
+            import streamlit as st
+            val = st.secrets.get(key, "")
+        except Exception:
+            pass
+    return val
+
+
 GROQ_MODEL = "llama-3.3-70b-versatile"
 
 # Ask for a wrapper object so JSON mode works cleanly
@@ -33,7 +45,7 @@ Score LOW relevance for: celebrity news, sports, local crime, lifestyle articles
 
 def get_groq_client():
     from groq import Groq
-    key = os.environ.get("GROQ_API_KEY", "")
+    key = _get_secret("GROQ_API_KEY")
     if not key or key == "your_groq_key_here":
         raise ValueError(
             "GROQ_API_KEY not set. Add it to .env — free key at console.groq.com"
@@ -42,7 +54,7 @@ def get_groq_client():
 
 
 def groq_key_configured() -> bool:
-    key = os.environ.get("GROQ_API_KEY", "")
+    key = _get_secret("GROQ_API_KEY")
     return bool(key) and key != "your_groq_key_here"
 
 
