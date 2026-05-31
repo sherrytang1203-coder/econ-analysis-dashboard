@@ -1024,8 +1024,12 @@ def render_single_stock(ticker: str) -> None:
         ))
 
     fig_price.update_layout(**_pro_layout("Stock Price (5Y)", "USD ($)", height=300))
-    fig_price.update_layout(yaxis=dict(range=[y_lo, y_hi]), dragmode=False)
-    _apply_range_buttons(fig_price, fp, "date", "close")
+    fig_price.update_layout(
+        xaxis=dict(range=[fp["date"].min().isoformat() if not fp.empty else None,
+                         fp["date"].max().isoformat() if not fp.empty else None]),
+        yaxis=dict(range=[y_lo, y_hi]),
+        dragmode=False,
+    )
     st.plotly_chart(fig_price, use_container_width=True, config={"displayModeBar": False})
 
     with st.container(border=True):
