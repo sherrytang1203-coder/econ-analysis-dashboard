@@ -25,22 +25,22 @@ from src.stock_fetcher import extract_fcf_from_pdf
 
 def discover_otis():
     """Discover and extract guidance from known OTIS presentations."""
-    print("\n🔍 Discovering OTIS presentations...\n")
+    print("\n[*] Discovering OTIS presentations...\n")
     results = scrape_otis_guidance(auto_store=True)
 
     print(f"Found {results['presentations_found']} presentations")
     print(f"Extracted {len(results['guidance_extracted'])} guidance records\n")
 
     if results['guidance_extracted']:
-        print("✓ Guidance Extracted:")
+        print("[+] Guidance Extracted:")
         for g in results['guidance_extracted']:
-            print(f"  • {g['presentation']} ({g['date']})")
-            print(f"    FCF: {g['fcf_guidance_range']} → ${g['fcf_guidance_midpoint']}B")
+            print(f"  * {g['presentation']} ({g['date']})")
+            print(f"    FCF: {g['fcf_guidance_range']} -> ${g['fcf_guidance_midpoint']}B")
 
     if results['errors']:
-        print("\n✗ Errors:")
+        print("\n[-] Errors:")
         for e in results['errors']:
-            print(f"  • {e['presentation']}: {e['error']}")
+            print(f"  * {e['presentation']}: {e['error']}")
 
     return results
 
@@ -55,17 +55,17 @@ def add_manual_presentation(pdf_url: str, ticker: str = "OTIS", year: int = 2026
     3. Prompt you to confirm the guidance amount
     4. Store in guidance_manager
     """
-    print(f"\n📄 Adding presentation: {pdf_url}\n")
+    print(f"\n[PDF] Adding presentation: {pdf_url}\n")
 
     # Extract from PDF
     print("Extracting FCF data from PDF...")
     pdf_data = extract_fcf_from_pdf(pdf_url)
 
     if not pdf_data or "error" in pdf_data:
-        print(f"❌ Error: {pdf_data.get('error', 'Unknown')}")
+        print(f"[ERROR] {pdf_data.get('error', 'Unknown')}")
         return False
 
-    print("\n📊 Extracted Information:")
+    print("\n[INFO] Extracted Information:")
     print("\nFCF Sections Found:")
     print("-" * 50)
     print(pdf_data.get("fcf_sections", "No FCF sections found")[:1000])
@@ -87,7 +87,7 @@ def add_manual_presentation(pdf_url: str, ticker: str = "OTIS", year: int = 2026
     try:
         fcf_billions = float(fcf_input)
     except ValueError:
-        print("❌ Invalid input")
+        print("[ERROR] Invalid input")
         return False
 
     # Store it
@@ -100,16 +100,16 @@ def add_manual_presentation(pdf_url: str, ticker: str = "OTIS", year: int = 2026
     )
 
     if success:
-        print(f"\n✓ Stored: {ticker} {year} FCF = ${fcf_billions}B")
+        print(f"\n[OK] Stored: {ticker} {year} FCF = ${fcf_billions}B")
         return True
     else:
-        print("❌ Failed to store guidance")
+        print("[ERROR] Failed to store guidance")
         return False
 
 
 def show_summary():
     """Show summary of all stored guidance."""
-    print("\n📋 Stored Guidance Summary:\n")
+    print("\n[SUMMARY] Stored Guidance:\n")
     all_guidance = list_all_guidance()
 
     if not all_guidance:

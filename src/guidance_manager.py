@@ -10,14 +10,14 @@ this module provides a practical system to:
 
 import json
 from pathlib import Path
-from typing import dict, list
+from typing import Optional
 from src.stock_fetcher import extract_fcf_from_pdf
 
 
 GUIDANCE_FILE = Path(__file__).parent.parent / "data" / "guidance_forecasts.json"
 
 
-def load_guidance() -> dict:
+def load_guidance() -> dict[str, any]:
     """Load all stored guidance forecasts."""
     if not GUIDANCE_FILE.exists():
         return {}
@@ -28,7 +28,7 @@ def load_guidance() -> dict:
         return {}
 
 
-def save_guidance(guidance_dict: dict) -> bool:
+def save_guidance(guidance_dict: dict[str, any]) -> bool:
     """Save guidance forecasts to file."""
     try:
         GUIDANCE_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -118,7 +118,7 @@ def extract_and_store_guidance(ticker: str, pdf_url: str, year: int = 2026,
     return guidance_dict
 
 
-def list_all_guidance() -> dict:
+def list_all_guidance() -> dict[str, any]:
     """List all stored guidance forecasts."""
     return load_guidance()
 

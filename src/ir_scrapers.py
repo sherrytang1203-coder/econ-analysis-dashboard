@@ -12,12 +12,12 @@ provides company-specific scrapers that can:
 import requests
 from bs4 import BeautifulSoup
 import re
-from typing import list, dict
+from typing import Optional
 from src.stock_fetcher import extract_fcf_from_pdf
 from src.guidance_manager import add_forecast, extract_and_store_guidance
 
 
-def find_otis_presentations() -> list:
+def find_otis_presentations() -> list[dict]:
     """
     Find recent OTIS earnings presentations from investor relations website.
 
@@ -44,7 +44,7 @@ def find_otis_presentations() -> list:
     return known_presentations
 
 
-def scrape_otis_guidance(auto_store: bool = True) -> dict:
+def scrape_otis_guidance(auto_store: bool = True) -> dict[str, any]:
     """
     Scrape OTIS presentations and extract guidance.
 
