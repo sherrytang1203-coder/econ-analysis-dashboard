@@ -1034,10 +1034,13 @@ def render_single_stock(ticker: str) -> None:
         xaxis=dict(
             showgrid=True,
             gridcolor="rgba(0,0,0,0.1)",
-            tickfont=dict(color="#666", size=10),
+            tickfont=dict(color="#666", size=9),
             showline=False, zeroline=False,
             rangeslider_visible=False,
             automargin=True,
+            showticklabels=True,
+            nticks=4,
+            tickformat="%b %Y",
         ),
         yaxis=dict(
             side="right",
