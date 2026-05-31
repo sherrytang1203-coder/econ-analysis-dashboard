@@ -14,13 +14,16 @@ Run from the repo root. The app serves at http://localhost:8501.
 
 Copy `.env` and fill in keys:
 ```
-FRED_API_KEY=...       # https://fred.stlouisfed.org/docs/api/api_key.html
-GROQ_API_KEY=...       # https://console.groq.com (free)
-SUPABASE_URL=...       # optional — enables cloud persistence
-SUPABASE_KEY=...       # anon/public JWT key (eyJ...)
+FRED_API_KEY=...              # https://fred.stlouisfed.org/docs/api/api_key.html (required)
+GROQ_API_KEY=...              # https://console.groq.com (free)
+SUPABASE_URL=...              # optional — enables cloud persistence
+SUPABASE_KEY=...              # anon/public JWT key (eyJ...)
+FINBOX_API_KEY=...            # optional — for 2026 forward FCF yield (https://finbox.io)
+GURUFOCUS_API_KEY=...         # optional — for 2026 forward FCF yield (https://gurufocus.com/api)
 ```
 
-Without `FRED_API_KEY` the app blocks on startup and shows a warning instead of loading data. Without `SUPABASE_URL`/`SUPABASE_KEY` the app falls back to local SQLite at `data/econ_data.db`.
+**Required:** `FRED_API_KEY` (blocks on startup without it).
+**Optional:** `SUPABASE_URL`/`SUPABASE_KEY` (falls back to SQLite), `FINBOX_API_KEY`, `GURUFOCUS_API_KEY` (forward FCF yield predictions).
 
 ## Architecture
 
