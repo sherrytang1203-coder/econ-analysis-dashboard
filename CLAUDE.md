@@ -121,6 +121,99 @@ The 2026 FCF Yield forecast uses a **hybrid approach** combining historical anal
 
 Typically ±1-2% of actual realized yield for stable, mature companies. Less accurate for high-growth or volatile companies.
 
+## Guidance Extraction System
+
+**Location:** `src/guidance_manager.py`, `src/ir_scrapers.py`, `scripts/discover_presentations.py`
+
+### Overview
+
+The guidance system allows you to extract **official FCF and EPS forecasts** from company investor relations presentations (PDF earnings calls, earnings announcements) and automatically use them to override calculated forecasts.
+
+### How It Works
+
+1. **Extract PDF Text** - `extract_fcf_from_pdf(pdf_url)` downloads and extracts text from earnings presentations
+2. **Find Guidance Numbers** - Searches for keywords like "FCF guidance", "forecast", "2026", etc.
+3. **Store Guidance** - `guidance_manager.py` stores official numbers in `data/guidance_forecasts.json`
+4. **Auto-Apply** - When `fetch_fcf_yield_forecast_2026()` is called, it checks for stored guidance first
+
+### Usage
+
+**Option 1: Discover and store automatically**
+```bash
+python scripts/discover_presentations.py --discover
+```
+
+This finds known presentations (currently OTIS), extracts guidance, and stores it.
+
+**Option 2: Add presentations manually**
+```bash
+python scripts/discover_presentations.py --add-manual "https://s203.q4cdn.com/.../1Q26-Otis-Earnings-Webcast.pdf"
+```
+
+The script will:
+- Download the PDF
+- Extract FCF-related text
+- Show you the extracted sections
+- Prompt you to enter the guidance amount (e.g., `1.65` for $1.65B)
+- Store it automatically
+
+**Option 3: Programmatic**
+```python
+from src.guidance_manager import add_forecast
+
+# Store official guidance
+add_forecast(
+    ticker="OTIS",
+    year=2026,
+    fcf_billions=1.625,  # Midpoint of $1.6B - $1.65B guidance
+    source="Q1 2026 Earnings Webcast (2026-05-02)",
+    pdf_url="https://..."
+)
+
+# Forecast will now use this guidance automatically
+from src.stock_fetcher import fetch_fcf_yield_forecast_2026
+forecast = fetch_fcf_yield_forecast_2026("OTIS")
+# Returns: {"confidence": "Official", "source": "Company guidance", ...}
+```
+
+### Finding Presentations
+
+1. Navigate to company investor relations site (e.g., https://www.otisinvestors.com/)
+2. Look for "Events & Presentations" or "Past Events"
+3. Many sites use JavaScript to load content dynamically — you may need to:
+   - Inspect Network tab (F12 → Network) to find PDF download URLs
+   - Or manually right-click → Save presentation as
+4. Copy the direct PDF URL and use `--add-manual`
+
+### Storage Format
+
+Guidance is stored in `data/guidance_forecasts.json`:
+```json
+{
+  "OTIS": {
+    "2026": {
+      "fcf_billions": 1.625,
+      "eps_dollars": null,
+      "source": "Q1 2026 Earnings Webcast (2026-05-02)",
+      "pdf_url": "https://..."
+    }
+  }
+}
+```
+
+### Priority Order
+
+When calling `fetch_fcf_yield_forecast_2026(ticker)`:
+1. If `fcf_guidance_billions` parameter provided → use it
+2. If stored guidance exists → use it (confidence: "Official")
+3. Otherwise → calculate from historical data (confidence: "High"/"Medium")
+
+### Limitations
+
+- PDF extraction is text-only; complex tables may not extract cleanly
+- Guidance is manual — requires you to identify and enter the numbers
+- Works best with plain-English guidance like "$1.6B to 1.65B FCF guidance"
+
 ## Debug log
 
 ### `AttributeError: 'Store' object has no attribute 'execute'` (2026-05-31)
