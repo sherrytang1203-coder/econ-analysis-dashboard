@@ -14,12 +14,11 @@ from src.config import (
     MACRO_INDICATORS, MACRO_GROUP_LABELS, ALL_SERIES_IDS, INVERSE_DELTA_SERIES,
     SECTOR_ETFS, INDEX_TICKERS, COMMODITY_TICKERS, RATE_TICKERS, TRACKED_STOCKS,
 )
-from src.storage import init_db, get_observations, get_all_metadata
+from src.store import Store
 from src.fetcher import get_fred_client, fred_key_configured
 from src.updater import run_update
 from src.market_fetcher import fetch_market_snapshot, fetch_historical, fetch_sector_performance
 from src.stock_fetcher import fetch_stock_info, fetch_stock_price, fetch_revenue, fetch_pe_history, fetch_loss_years, fetch_fcf_yield, fetch_fcf_history, fetch_rsi
-from src.news_store import init_articles_table, get_top10, last_pipeline_date
 from src.news_fetcher import deduplicate_by_similarity
 from src.news_analyzer import get_groq_client, groq_key_configured
 from src.news_pipeline import run_pipeline, needs_run
@@ -50,13 +49,12 @@ st.set_page_config(
 
 # ── Session state ─────────────────────────────────────────────────────────────
 
-if "conn" not in st.session_state:
-    st.session_state.conn = init_db(DB_PATH)
-    init_articles_table(st.session_state.conn)
+if "store" not in st.session_state:
+    st.session_state.store = Store()
 if "update_results" not in st.session_state:
     st.session_state.update_results = None
 
-conn = st.session_state.conn
+store = st.session_state.store
 
 # ── Cached market data fetchers ───────────────────────────────────────────────
 
@@ -116,7 +114,7 @@ with col_btn:
 if check_clicked:
     fred = get_fred_client()
     with st.spinner("Syncing macro data from FRED..."):
-        results = run_update(conn, fred)
+        results = run_update(store, fred)
         st.session_state.update_results = results
     st.rerun()
 
@@ -134,7 +132,7 @@ if st.session_state.update_results:
 
 # ── Auto initial load ─────────────────────────────────────────────────────────
 
-meta_df = get_all_metadata(conn)
+meta_df = store.get_all_metadata()
 if meta_df.empty:
     fred = get_fred_client()
     msg = ("Loading available data from BLS & Yahoo Finance (no FRED key)..."
@@ -144,11 +142,11 @@ if meta_df.empty:
     results = []
     for i, sid in enumerate(ALL_SERIES_IDS):
         progress_bar.progress((i + 1) / len(ALL_SERIES_IDS), text=f"Loading {sid}...")
-        partial = run_update(conn, fred, series_ids=[sid])
+        partial = run_update(store, fred, series_ids=[sid])
         results.extend(partial)
     progress_bar.empty()
     st.session_state.update_results = results
-    meta_df = get_all_metadata(conn)
+    meta_df = store.get_all_metadata()
     st.rerun()
 
 # ── Shared helpers ────────────────────────────────────────────────────────────
@@ -454,8 +452,8 @@ def render_market_leading_charts():
         )
 
     c3, c4 = st.columns(2)
-    df10 = get_observations(conn, "DGS10")
-    df2  = get_observations(conn, "DGS2")
+    df10 = store.get_observations("DGS10")
+    df2  = store.get_observations("DGS2")
     with c3:
         fig_yc = go.Figure()
         if not df10.empty:
@@ -513,7 +511,7 @@ def render_indicator_group(group_key: str, series_dict: dict) -> None:
     for i, sid in enumerate(series_ids):
         col = cols[i % 4]
         info = series_dict[sid]
-        df = get_observations(conn, sid)
+        df = store.get_observations(sid)
 
         if df.empty or df["value"].dropna().empty:
             col.metric(info["name"], "No data", help="Sync FRED data to populate.")
@@ -537,8 +535,8 @@ def render_indicator_group(group_key: str, series_dict: dict) -> None:
 
     # Yield spread bonus card in Leading tab
     if group_key == "leading":
-        df10 = get_observations(conn, "DGS10")
-        df2  = get_observations(conn, "DGS2")
+        df10 = store.get_observations("DGS10")
+        df2  = store.get_observations("DGS2")
         if not df10.empty and not df2.empty:
             d10 = df10.set_index("date")["value"]
             d2  = df2.set_index("date")["value"]
@@ -564,7 +562,7 @@ def render_indicator_group(group_key: str, series_dict: dict) -> None:
         chart_cols = st.columns(2)
         for col, sid in zip(chart_cols, pair):
             info = series_dict[sid]
-            df = get_observations(conn, sid)
+            df = store.get_observations(sid)
             col.plotly_chart(
                 _line_chart(df, info["name"], info["unit"]),
                 use_container_width=True,
@@ -593,8 +591,8 @@ _DIRECTION_ICON = {"positive": "🟢", "negative": "🔴", "mixed": "🟡", "neu
 
 def render_news():
     today = date_type.today().isoformat()
-    top10 = deduplicate_by_similarity(get_top10(conn, today), threshold=0.75)
-    last_run = last_pipeline_date(conn)
+    top10 = deduplicate_by_similarity(store.get_top10(today), threshold=0.75)
+    last_run = store.last_pipeline_date()
     already_ran_today = last_run == today
 
     col_hdr, col_btn = st.columns([4, 1])
@@ -616,7 +614,7 @@ def render_news():
             try:
                 groq = get_groq_client()
                 with st.spinner("Analyzing today's news with Llama 3.3 70B..."):
-                    result = run_pipeline(conn, groq)
+                    result = run_pipeline(store, groq)
                 if "error" in result:
                     st.session_state["news_status"] = ("error", result["error"])
                 else:

@@ -3,12 +3,6 @@ import pandas as pd
 from fredapi import Fred
 
 from src.config import MACRO_INDICATORS, ALL_SERIES_IDS
-from src.storage import (
-    get_stored_last_updated,
-    get_last_stored_date,
-    bulk_upsert_observations,
-    upsert_metadata,
-)
 from src.fetcher import fetch_series_info, fetch_series_last_updated, fetch_observations
 
 
@@ -19,13 +13,13 @@ def _find_category(series_id: str) -> str:
     return "unknown"
 
 
-def check_and_update(conn, fred: Fred, series_ids: list[str] = None) -> list[dict]:
+def check_and_update(store, fred: Fred, series_ids: list[str] = None) -> list[dict]:
     if series_ids is None:
         series_ids = ALL_SERIES_IDS
 
     results = []
     for series_id in series_ids:
-        stored = get_stored_last_updated(conn, series_id)
+        stored = store.get_stored_last_updated(series_id)
         try:
             live = fetch_series_last_updated(fred, series_id)
         except Exception as e:
@@ -56,15 +50,14 @@ def check_and_update(conn, fred: Fred, series_ids: list[str] = None) -> list[dic
     return results
 
 
-def sync_series(conn, fred: Fred, series_id: str, status: str,
+def sync_series(store, fred: Fred, series_id: str, status: str,
                 live_last_updated: str) -> None:
     if status == "current":
         return
 
     observation_start = None
     if status == "updated":
-        last_date = get_last_stored_date(conn, series_id)
-        observation_start = last_date  # FRED includes this date; INSERT OR REPLACE handles overlap
+        observation_start = store.get_last_stored_date(series_id)
 
     try:
         observations = fetch_observations(fred, series_id, observation_start)
@@ -75,9 +68,8 @@ def sync_series(conn, fred: Fred, series_id: str, status: str,
         (str(idx.date()), None if pd.isna(val) else float(val))
         for idx, val in observations.items()
     ]
-    bulk_upsert_observations(conn, series_id, records)
+    store.bulk_upsert_observations(series_id, records)
 
-    # Pull full metadata from FRED to store accurate name/unit/frequency
     try:
         info = fetch_series_info(fred, series_id)
         name = info.get("title", series_id)
@@ -90,8 +82,7 @@ def sync_series(conn, fred: Fred, series_id: str, status: str,
         unit = meta.get("unit", "")
         frequency = meta.get("frequency", "")
 
-    upsert_metadata(
-        conn,
+    store.upsert_metadata(
         series_id=series_id,
         name=name,
         category=_find_category(series_id),
@@ -102,13 +93,13 @@ def sync_series(conn, fred: Fred, series_id: str, status: str,
     )
 
 
-def run_update(conn, fred: Fred, series_ids: list[str] = None) -> list[dict]:
-    results = check_and_update(conn, fred, series_ids)
+def run_update(store, fred: Fred, series_ids: list[str] = None) -> list[dict]:
+    results = check_and_update(store, fred, series_ids)
 
     for r in results:
         if r["status"] in ("initial_load", "updated"):
             try:
-                sync_series(conn, fred, r["series_id"], r["status"],
+                sync_series(store, fred, r["series_id"], r["status"],
                             r.get("live_last_updated", ""))
                 r["synced"] = True
             except Exception as e:
