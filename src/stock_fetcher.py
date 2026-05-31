@@ -307,17 +307,19 @@ def fetch_fcf_yield(ticker: str) -> float | None:
         return None
 
 
-def fetch_fcf_yield_forecast_2026(ticker: str, fcf_guidance_billions: float = None) -> dict | None:
+def fetch_fcf_yield_forecast_2026(ticker: str, fcf_guidance_billions: float = None, use_stored: bool = True) -> dict | None:
     """
     Forecast 2026 Free Cash Flow Yield.
 
-    If fcf_guidance_billions is provided (from company earnings announcements),
-    use it directly. Otherwise calculate using hybrid fundamental approach.
+    Priority:
+    1. If fcf_guidance_billions provided explicitly, use it
+    2. If use_stored=True, check guidance_manager for stored official guidance
+    3. Otherwise calculate using hybrid fundamental approach
 
     Args:
         ticker: Stock ticker
         fcf_guidance_billions: Official FCF guidance for 2026 in billions (e.g., 1.6 for $1.6B)
-                              If provided, overrides calculated approach.
+        use_stored: If True, check guidance_manager for stored guidance first
 
     Returns:
         {
@@ -325,10 +327,20 @@ def fetch_fcf_yield_forecast_2026(ticker: str, fcf_guidance_billions: float = No
             "fcf_2026": float (billions),
             "market_cap_2026": float (billions),
             "confidence": str ("Official" if using guidance, "High"/"Medium" if calculated),
-            "source": str (optional - "Company guidance" if official)
+            "source": str (optional - description of guidance source)
         }
     """
-    # If official guidance provided, use it
+    # Try to load stored guidance first
+    if fcf_guidance_billions is None and use_stored:
+        try:
+            from src.guidance_manager import get_forecast
+            stored = get_forecast(ticker, 2026)
+            if stored and stored.get("fcf_billions"):
+                fcf_guidance_billions = stored["fcf_billions"]
+        except Exception:
+            pass
+
+    # If official guidance provided or loaded, use it
     if fcf_guidance_billions is not None and fcf_guidance_billions > 0:
         try:
             t = yf.Ticker(ticker)
