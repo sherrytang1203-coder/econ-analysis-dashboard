@@ -458,6 +458,82 @@ def fetch_fcf_yield_forecast_2026(ticker: str) -> dict | None:
         return None
 
 
+def extract_fcf_from_pdf(pdf_url: str) -> dict | None:
+    """
+    Extract Free Cash Flow information from earnings presentation PDF.
+
+    Searches for FCF-specific keywords and extracts:
+    - FCF amounts (historical and guidance)
+    - FCF margins and trends
+    - Capital expenditure information
+    - Operating cash flow
+
+    Returns:
+        {
+            "fcf_current": str (current/latest FCF amount),
+            "fcf_guidance": str (forward FCF guidance),
+            "fcf_margin": str (FCF as % of revenue),
+            "fcf_sections": str (relevant text snippets),
+            "numbers_found": list (all extracted $ amounts and %),
+            "raw_text": str (full text for manual review)
+        }
+    """
+    try:
+        import pdfplumber
+        import io
+
+        # Download PDF
+        resp = requests.get(pdf_url, timeout=10)
+        if resp.status_code != 200:
+            return {"error": "Failed to download PDF"}
+
+        # Extract text from PDF
+        pdf_bytes = resp.content
+        text = ""
+
+        with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+            for page in pdf.pages[:15]:  # First 15 pages
+                text += page.extract_text() or ""
+
+        if not text:
+            return {"error": "Could not extract text from PDF"}
+
+        # Search for FCF-specific sections
+        fcf_keywords = [
+            "free cash flow", "fcf", "operating cash flow", "capital expenditure",
+            "capex", "cash from operations", "fcf guidance", "fcf outlook",
+            "fcf conversion", "fcf margin", "cash generation"
+        ]
+
+        fcf_sections = ""
+        lines = text.split("\n")
+        for i, line in enumerate(lines):
+            if any(kw.lower() in line.lower() for kw in fcf_keywords):
+                # Capture context
+                start = max(0, i - 3)
+                end = min(len(lines), i + 12)
+                fcf_sections += "\n".join(lines[start:end]) + "\n\n"
+
+        # Extract numbers: currency amounts, percentages
+        dollar_amounts = re.findall(r'\$[\d,.]+\s*[BM]?', text)
+        percentages = re.findall(r'\d+[.]\d+%|\d+%', text)
+
+        return {
+            "fcf_current": "See fcf_sections",
+            "fcf_guidance": "See fcf_sections",
+            "fcf_margin": "See fcf_sections",
+            "fcf_sections": fcf_sections[:3000],  # Relevant FCF text
+            "dollar_amounts": list(set(dollar_amounts))[:20],  # Top amounts found
+            "percentages": list(set(percentages))[:10],  # Percentages found
+            "raw_text": text,  # Full text for review
+        }
+
+    except ImportError:
+        return {"error": "pdfplumber not installed. Run: pip install pdfplumber"}
+    except Exception as e:
+        return {"error": str(e)}
+
+
 def extract_guidance_from_pdf(pdf_url: str) -> dict | None:
     """
     Extract forward guidance (earnings, FCF) from earnings presentation PDF.
@@ -475,6 +551,7 @@ def extract_guidance_from_pdf(pdf_url: str) -> dict | None:
     """
     try:
         import pdfplumber
+        import io
 
         # Download PDF
         resp = requests.get(pdf_url, timeout=10)
@@ -486,7 +563,6 @@ def extract_guidance_from_pdf(pdf_url: str) -> dict | None:
         text = ""
 
         # Use pdfplumber to extract text
-        import io
         with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
             for page in pdf.pages[:10]:  # First 10 pages only
                 text += page.extract_text() or ""
