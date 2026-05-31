@@ -305,6 +305,157 @@ def fetch_fcf_yield(ticker: str) -> float | None:
         return None
 
 
+def fetch_fcf_yield_forecast_2026(ticker: str) -> dict | None:
+    """
+    Forecast 2026 Free Cash Flow Yield using fundamental hybrid approach.
+
+    Methodology:
+    1. Get analyst consensus EPS growth rate for 2026
+    2. Calculate historical FCF margin (FCF / Revenue) over 3 years
+    3. Calculate historical CapEx as % of revenue over 3 years
+    4. Project 2026 FCF = 2026 Revenue × FCF Margin
+    5. Project 2026 Market Cap = Current Market Cap × (1 + EPS growth)
+    6. Calculate 2026 FCF Yield = 2026 FCF / 2026 Market Cap
+
+    Returns:
+        {
+            "fcf_yield_2026": float (%),
+            "fcf_2026": float (dollars),
+            "market_cap_2026": float (dollars),
+            "eps_growth_rate": float (%),
+            "fcf_margin_hist": float (% of revenue),
+            "capex_margin_hist": float (% of revenue),
+            "confidence": str ("High" / "Medium" / "Low")
+        }
+    """
+    try:
+        t = yf.Ticker(ticker)
+        info = t.info
+
+        # Current metrics
+        current_mc = info.get("marketCap")
+        trailing_eps = info.get("trailingEps")
+        forward_eps = info.get("forwardEps")
+        shares = info.get("sharesOutstanding")
+
+        if not all([current_mc, trailing_eps, forward_eps, shares]):
+            return None
+
+        # Calculate EPS growth rate (forward vs trailing)
+        eps_growth = (forward_eps - trailing_eps) / abs(trailing_eps) if trailing_eps != 0 else 0
+
+        # Get historical financials for margin calculations (3-year average)
+        try:
+            income_stmt = t.income_stmt
+            cash_flow = t.cash_flow
+
+            if income_stmt.empty or cash_flow.empty:
+                return None
+
+            # Extract revenue (most recent 3 years)
+            revenue_col = None
+            for col_name in ["Total Revenue", "TotalRevenue", "Revenue"]:
+                if col_name in income_stmt.index:
+                    revenue_col = col_name
+                    break
+
+            if not revenue_col:
+                return None
+
+            revenues = income_stmt.loc[revenue_col].dropna().head(3)
+            if revenues.empty:
+                return None
+
+            avg_revenue = float(revenues.mean())
+
+            # Extract FCF or calculate from OCF - CapEx
+            fcf_col = None
+            for col_name in ["Free Cash Flow", "FreeCashFlow"]:
+                if col_name in cash_flow.index:
+                    fcf_col = col_name
+                    break
+
+            if fcf_col:
+                fcfs = cash_flow.loc[fcf_col].dropna().head(3)
+                avg_fcf = float(fcfs.mean()) if not fcfs.empty else None
+            else:
+                # Calculate FCF from OCF - CapEx
+                ocf_col = None
+                for col_name in ["Operating Cash Flow", "Total Cash From Operating Activities"]:
+                    if col_name in cash_flow.index:
+                        ocf_col = col_name
+                        break
+
+                capex_col = None
+                for col_name in ["Capital Expenditure", "Capital Expenditures"]:
+                    if col_name in cash_flow.index:
+                        capex_col = col_name
+                        break
+
+                if ocf_col and capex_col:
+                    ocfs = cash_flow.loc[ocf_col].dropna().head(3)
+                    capexs = cash_flow.loc[capex_col].dropna().head(3)
+                    if not ocfs.empty and not capexs.empty:
+                        avg_fcf = float((ocfs + capexs).mean())  # CapEx is negative
+                    else:
+                        avg_fcf = None
+                else:
+                    avg_fcf = None
+
+            if not avg_fcf or avg_fcf <= 0:
+                return None
+
+            # Calculate FCF margin and CapEx margin
+            fcf_margin = avg_fcf / avg_revenue if avg_revenue > 0 else 0
+
+            # CapEx as % of revenue
+            capex_col = None
+            for col_name in ["Capital Expenditure", "Capital Expenditures"]:
+                if col_name in cash_flow.index:
+                    capex_col = col_name
+                    break
+
+            if capex_col:
+                capexs = cash_flow.loc[capex_col].dropna().head(3)
+                avg_capex = float(abs(capexs.mean())) if not capexs.empty else 0
+                capex_margin = avg_capex / avg_revenue if avg_revenue > 0 else 0
+            else:
+                capex_margin = 0
+
+            # Project 2026 metrics
+            # Revenue growth ≈ EPS growth (simplified assumption)
+            revenue_growth = eps_growth
+            fcf_2026 = avg_revenue * (1 + revenue_growth) * fcf_margin
+
+            # Market cap growth based on EPS growth (P/E * EPS → higher EPS = higher valuation)
+            mc_2026 = current_mc * (1 + eps_growth)
+
+            # Calculate 2026 FCF Yield
+            fcf_yield_2026 = (fcf_2026 / mc_2026 * 100) if mc_2026 > 0 else None
+
+            if not fcf_yield_2026:
+                return None
+
+            # Confidence level based on data completeness
+            confidence = "High" if all([fcf_col, avg_fcf > 0]) else "Medium"
+
+            return {
+                "fcf_yield_2026": round(fcf_yield_2026, 2),
+                "fcf_2026": round(fcf_2026, 0),
+                "market_cap_2026": round(mc_2026, 0),
+                "eps_growth_rate": round(eps_growth * 100, 2),
+                "fcf_margin_hist": round(fcf_margin * 100, 2),
+                "capex_margin_hist": round(capex_margin * 100, 2),
+                "confidence": confidence,
+            }
+
+        except Exception:
+            return None
+
+    except Exception:
+        return None
+
+
 def fetch_rsi(ticker: str, window: int = 14, weekly: bool = False) -> pd.DataFrame:
     """Return RSI time series with columns: date, rsi (2-year lookback)."""
     try:
