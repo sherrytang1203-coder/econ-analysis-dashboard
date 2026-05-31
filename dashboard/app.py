@@ -1026,17 +1026,18 @@ def render_single_stock(ticker: str) -> None:
     fig_price.update_layout(
         plot_bgcolor="white",
         paper_bgcolor="white",
-        height=380,
-        margin=dict(l=0, r=4, t=4, b=35),
+        height=420,
+        margin=dict(l=0, r=4, t=4, b=50),
         hovermode="x unified",
         showlegend=False,
         dragmode=False,
         xaxis=dict(
             showgrid=True,
             gridcolor="rgba(0,0,0,0.1)",
-            tickfont=dict(color="#666", size=11),
+            tickfont=dict(color="#666", size=10),
             showline=False, zeroline=False,
             rangeslider_visible=False,
+            automargin=True,
         ),
         yaxis=dict(
             side="right",
