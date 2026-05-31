@@ -304,7 +304,7 @@ class Store:
         ).fetchone()
         return row[0] if row else None
 
-    # ── Watchlist ──────────────────────────────────────────────────────────────
+    # ── Watchlist (v2) ────────────────────────────────────────────────────────
 
     def get_watchlist(self) -> dict:
         """Return {ticker: name} for all user-added stocks."""

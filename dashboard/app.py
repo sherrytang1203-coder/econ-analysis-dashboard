@@ -85,14 +85,18 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# ── Store (app-level singleton, cleared on new deployment) ────────────────────
+
+@st.cache_resource
+def _get_store():
+    return Store()
+
+store = _get_store()
+
 # ── Session state ─────────────────────────────────────────────────────────────
 
-if "store" not in st.session_state or not hasattr(st.session_state.store, "add_to_watchlist"):
-    st.session_state.store = Store()
 if "update_results" not in st.session_state:
     st.session_state.update_results = None
-
-store = st.session_state.store
 
 
 def _load_custom_stocks() -> dict:
