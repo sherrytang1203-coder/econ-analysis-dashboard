@@ -290,15 +290,18 @@ def _delta_str(latest: float, prev: float) -> str | None:
 
 def _apply_range_buttons(fig: go.Figure, df: pd.DataFrame,
                          x_col: str = "date", y_col: str = "value",
-                         fixed_y: list | None = None) -> go.Figure:
-    """Add 1Y/5Y/10Y/All buttons that rescale both axes. Defaults to 1Y view."""
+                         fixed_y: list | None = None,
+                         timeframes: list[tuple] | None = None) -> go.Figure:
+    """Add range buttons that rescale both axes. Defaults to first timeframe."""
     today = pd.Timestamp.today().normalize()
-    cutoffs = [
-        ("1Y",  today - pd.DateOffset(years=1)),
-        ("5Y",  today - pd.DateOffset(years=5)),
-        ("10Y", today - pd.DateOffset(years=10)),
-        ("All", None),
-    ]
+    if timeframes is None:
+        timeframes = [
+            ("1Y",  today - pd.DateOffset(years=1)),
+            ("5Y",  today - pd.DateOffset(years=5)),
+            ("10Y", today - pd.DateOffset(years=10)),
+            ("All", None),
+        ]
+    cutoffs = timeframes
 
     def _y(start):
         if fixed_y:
@@ -969,68 +972,47 @@ def render_single_stock(ticker: str) -> None:
     price_df = _stock_price(ticker, "5y")
     ohlcv_df = _stock_ohlcv(ticker, "5y")
 
-    # Controls: timeframe left, chart type right
-    col1, col2 = st.columns([1, 1])
-    with col1:
-        timeframe = st.radio(
-            "Timeframe", ["1M", "6M", "1Y", "5Y", "All"],
-            index=2, horizontal=True,
-            label_visibility="collapsed",
-            key=f"tf_{ticker}",
-        )
+    # Chart type toggle (Line/Candle)
+    col1, col2 = st.columns([5, 1])
     with col2:
         chart_type = st.radio(
-            "Type", ["Line", "Candle"],
+            "", ["Line", "Candle"],
             index=0, horizontal=True,
             label_visibility="collapsed",
             key=f"ct_{ticker}",
         )
 
-    # Filter by selected timeframe
-    _tf_offsets = {"1M": pd.DateOffset(months=1), "6M": pd.DateOffset(months=6),
-                   "1Y": pd.DateOffset(years=1),  "5Y": pd.DateOffset(years=5)}
-    if timeframe in _tf_offsets:
-        _cutoff = pd.Timestamp.today() - _tf_offsets[timeframe]
-        fp = price_df[price_df["date"] >= _cutoff] if not price_df.empty else price_df
-        fo = ohlcv_df[ohlcv_df["date"] >= _cutoff] if not ohlcv_df.empty else ohlcv_df
-    else:
-        fp, fo = price_df, ohlcv_df
-
-    # Y bounds
-    if chart_type == "Candle" and not fo.empty:
-        y_lo = float(fo["low"].min())  * 0.995
-        y_hi = float(fo["high"].max()) * 1.005
-    elif not fp.empty:
-        y_lo = float(fp["close"].min()) * 0.992
-        y_hi = float(fp["close"].max()) * 1.008
-    else:
-        y_lo, y_hi = 0, 1
-
     fig_price = go.Figure()
-    if chart_type == "Line" and not fp.empty:
+    if chart_type == "Line" and not price_df.empty:
         fig_price.add_trace(go.Scatter(
-            x=fp["date"], y=fp["close"],
+            x=price_df["date"], y=price_df["close"],
             mode="lines",
             line=dict(color="#2563eb", width=2),
             fill="tozeroy", fillcolor="rgba(37,99,235,0.08)",
             hovertemplate="%{x|%b %d, %Y} — $%{y:,.2f}<extra></extra>",
         ))
-    elif chart_type == "Candle" and not fo.empty:
+    elif chart_type == "Candle" and not ohlcv_df.empty:
         fig_price.add_trace(go.Candlestick(
-            x=fo["date"],
-            open=fo["open"], high=fo["high"],
-            low=fo["low"],   close=fo["close"],
+            x=ohlcv_df["date"],
+            open=ohlcv_df["open"], high=ohlcv_df["high"],
+            low=ohlcv_df["low"],   close=ohlcv_df["close"],
             increasing_line_color="#10b981", increasing_fillcolor="#10b981",
             decreasing_line_color="#ef4444", decreasing_fillcolor="#ef4444",
         ))
 
     fig_price.update_layout(**_pro_layout("Stock Price (5Y)", "USD ($)", height=300))
-    fig_price.update_layout(
-        xaxis=dict(range=[fp["date"].min().isoformat() if not fp.empty else None,
-                         fp["date"].max().isoformat() if not fp.empty else None]),
-        yaxis=dict(range=[y_lo, y_hi]),
-        dragmode=False,
-    )
+    fig_price.update_layout(dragmode=False)
+
+    # Timeframe buttons (1M/6M/1Y/5Y/All) inside the chart — fast, no rerun
+    today = pd.Timestamp.today().normalize()
+    timeframes = [
+        ("1M", today - pd.DateOffset(months=1)),
+        ("6M", today - pd.DateOffset(months=6)),
+        ("1Y", today - pd.DateOffset(years=1)),
+        ("5Y", today - pd.DateOffset(years=5)),
+        ("All", None),
+    ]
+    _apply_range_buttons(fig_price, price_df, "date", "close", timeframes=timeframes)
     st.plotly_chart(fig_price, use_container_width=True, config={"displayModeBar": False})
 
     with st.container(border=True):
