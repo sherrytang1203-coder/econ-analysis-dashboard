@@ -57,6 +57,11 @@ class Store:
                 econ_relevance REAL, impact_direction TEXT, impact_magnitude REAL,
                 ai_summary TEXT, reasoning TEXT, rank INTEGER, analyzed_at TEXT
             );
+            CREATE TABLE IF NOT EXISTS watchlist (
+                ticker   TEXT PRIMARY KEY,
+                name     TEXT NOT NULL,
+                added_at TEXT
+            );
         """)
         self._conn.commit()
 
@@ -298,3 +303,35 @@ class Store:
             "SELECT MAX(fetched_date) FROM articles WHERE rank IS NOT NULL"
         ).fetchone()
         return row[0] if row else None
+
+    # ── Watchlist ──────────────────────────────────────────────────────────────
+
+    def get_watchlist(self) -> dict:
+        """Return {ticker: name} for all user-added stocks."""
+        if self.is_supabase:
+            r = self._supa.table("watchlist").select("ticker,name").execute()
+            return {row["ticker"]: row["name"] for row in (r.data or [])}
+        rows = self._conn.execute(
+            "SELECT ticker, name FROM watchlist ORDER BY added_at"
+        ).fetchall()
+        return {ticker: name for ticker, name in rows}
+
+    def add_to_watchlist(self, ticker: str, name: str) -> None:
+        added_at = datetime.now(timezone.utc).isoformat()
+        if self.is_supabase:
+            self._supa.table("watchlist").upsert(
+                {"ticker": ticker, "name": name, "added_at": added_at}
+            ).execute()
+        else:
+            self._conn.execute(
+                "INSERT OR REPLACE INTO watchlist (ticker, name, added_at) VALUES (?,?,?)",
+                (ticker, name, added_at),
+            )
+            self._conn.commit()
+
+    def remove_from_watchlist(self, ticker: str) -> None:
+        if self.is_supabase:
+            self._supa.table("watchlist").delete().eq("ticker", ticker).execute()
+        else:
+            self._conn.execute("DELETE FROM watchlist WHERE ticker = ?", (ticker,))
+            self._conn.commit()

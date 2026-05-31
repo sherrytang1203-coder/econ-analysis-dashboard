@@ -28,18 +28,23 @@ CUSTOM_STOCKS_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "cust
 
 
 def _load_custom_stocks() -> dict:
+    """Load from store (Supabase or SQLite). Falls back to legacy JSON if needed."""
+    try:
+        return store.get_watchlist()
+    except Exception:
+        pass
+    # legacy JSON fallback (local only)
     if os.path.exists(CUSTOM_STOCKS_PATH):
         try:
             with open(CUSTOM_STOCKS_PATH) as f:
                 return json.load(f)
         except Exception:
-            return {}
+            pass
     return {}
 
 
-def _save_custom_stocks(stocks: dict) -> None:
-    with open(CUSTOM_STOCKS_PATH, "w") as f:
-        json.dump(stocks, f, indent=2)
+def _save_custom_stock(ticker: str, name: str) -> None:
+    store.add_to_watchlist(ticker, name)
 
 st.set_page_config(
     page_title="Economic Dashboard",
@@ -1033,8 +1038,7 @@ def render_stock_tracing() -> None:
         add_col, dismiss_col, _ = st.columns([1, 1, 4])
         with add_col:
             if st.button(f"Add {t} to watchlist", type="primary"):
-                custom[t] = info.get("name", t)
-                _save_custom_stocks(custom)
+                _save_custom_stock(t, info.get("name", t))
                 del st.session_state["search_result"]
                 st.session_state["pending_select"] = t
                 st.rerun()
