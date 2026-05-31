@@ -26,26 +26,6 @@ from src.news_pipeline import run_pipeline, needs_run
 DB_PATH           = os.path.join(os.path.dirname(__file__), "..", "data", "econ_data.db")
 CUSTOM_STOCKS_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "custom_stocks.json")
 
-
-def _load_custom_stocks() -> dict:
-    """Load from store (Supabase or SQLite). Falls back to legacy JSON if needed."""
-    try:
-        return store.get_watchlist()
-    except Exception:
-        pass
-    # legacy JSON fallback (local only)
-    if os.path.exists(CUSTOM_STOCKS_PATH):
-        try:
-            with open(CUSTOM_STOCKS_PATH) as f:
-                return json.load(f)
-        except Exception:
-            pass
-    return {}
-
-
-def _save_custom_stock(ticker: str, name: str) -> None:
-    store.add_to_watchlist(ticker, name)
-
 st.set_page_config(
     page_title="Economic Dashboard",
     layout="wide",
@@ -113,6 +93,24 @@ if "update_results" not in st.session_state:
     st.session_state.update_results = None
 
 store = st.session_state.store
+
+
+def _load_custom_stocks() -> dict:
+    try:
+        return store.get_watchlist()
+    except Exception:
+        pass
+    if os.path.exists(CUSTOM_STOCKS_PATH):
+        try:
+            with open(CUSTOM_STOCKS_PATH) as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+
+def _save_custom_stock(ticker: str, name: str) -> None:
+    store.add_to_watchlist(ticker, name)
 
 # ── Cached market data fetchers ───────────────────────────────────────────────
 
