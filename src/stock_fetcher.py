@@ -2,6 +2,24 @@ import pandas as pd
 import yfinance as yf
 
 
+def fetch_stock_ohlcv(ticker: str, period: str = "5y") -> pd.DataFrame:
+    """Return DataFrame with columns: date, open, high, low, close."""
+    try:
+        df = yf.download(ticker, period=period, progress=False, auto_adjust=True)
+        if df.empty:
+            return pd.DataFrame(columns=["date", "open", "high", "low", "close"])
+        result = pd.DataFrame({
+            "date":  pd.to_datetime(df.index).normalize(),
+            "open":  (df["Open"].iloc[:, 0]  if isinstance(df["Open"],  pd.DataFrame) else df["Open"]).values,
+            "high":  (df["High"].iloc[:, 0]  if isinstance(df["High"],  pd.DataFrame) else df["High"]).values,
+            "low":   (df["Low"].iloc[:, 0]   if isinstance(df["Low"],   pd.DataFrame) else df["Low"]).values,
+            "close": (df["Close"].iloc[:, 0] if isinstance(df["Close"], pd.DataFrame) else df["Close"]).values,
+        })
+        return result.dropna().reset_index(drop=True)
+    except Exception:
+        return pd.DataFrame(columns=["date", "open", "high", "low", "close"])
+
+
 def fetch_stock_price(ticker: str, period: str = "5y") -> pd.DataFrame:
     """Return DataFrame with columns: date, close."""
     try:

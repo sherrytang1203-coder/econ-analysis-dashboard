@@ -18,7 +18,7 @@ from src.store import Store
 from src.fetcher import get_fred_client, fred_key_configured
 from src.updater import run_update
 from src.market_fetcher import fetch_market_snapshot, fetch_historical, fetch_sector_performance
-from src.stock_fetcher import fetch_stock_info, fetch_stock_price, fetch_revenue, fetch_pe_history, fetch_loss_years, fetch_fcf_yield, fetch_fcf_history, fetch_rsi
+from src.stock_fetcher import fetch_stock_info, fetch_stock_price, fetch_stock_ohlcv, fetch_revenue, fetch_pe_history, fetch_loss_years, fetch_fcf_yield, fetch_fcf_history, fetch_rsi
 from src.news_fetcher import deduplicate_by_similarity
 from src.news_analyzer import get_groq_client, groq_key_configured
 from src.news_pipeline import run_pipeline, needs_run
@@ -167,6 +167,10 @@ def _stock_pe_all(ticker):
     return fetch_loss_years(ticker)
 
 @st.cache_data(ttl=3600)
+def _stock_ohlcv(ticker, period="5y"):
+    return fetch_stock_ohlcv(ticker, period)
+
+@st.cache_data(ttl=3600)
 def _stock_fcf_yield(ticker):
     return fetch_fcf_yield(ticker)
 
@@ -288,16 +292,19 @@ def _apply_range_buttons(fig: go.Figure, df: pd.DataFrame,
                    "yaxis.range": _y(start)}],
         ))
 
+    range_menu = dict(
+        type="buttons", direction="right", showactive=True, active=0,
+        x=1.0, xanchor="right", y=1.0, yanchor="bottom",
+        pad={"l": 0, "r": 0, "t": 4, "b": 4},
+        buttons=buttons,
+        bgcolor="rgba(248,249,250,0.95)",
+        bordercolor="#e5e7eb", borderwidth=1,
+        font=dict(size=10, color="#6b7280"),
+    )
+    existing = list(fig.layout.updatemenus or [])
+    existing.append(range_menu)
     fig.update_layout(
-        updatemenus=[dict(
-            type="buttons", direction="right", showactive=True, active=0,
-            x=1.0, xanchor="right", y=1.0, yanchor="bottom",
-            pad={"l": 0, "r": 0, "t": 4, "b": 4},
-            buttons=buttons,
-            bgcolor="rgba(248,249,250,0.95)",
-            bordercolor="#e5e7eb", borderwidth=1,
-            font=dict(size=10, color="#6b7280"),
-        )],
+        updatemenus=existing,
         xaxis=dict(range=[default_x0, today.isoformat()]),
         yaxis=dict(range=_y(cutoffs[0][1])),
     )
@@ -922,18 +929,53 @@ def render_single_stock(ticker: str) -> None:
     st.markdown('<div class="sec-label">Price &amp; Technical Analysis</div>',
                 unsafe_allow_html=True)
     with st.container(border=True):
-        price_df = _stock_price(ticker, "5y")
+        price_df  = _stock_price(ticker, "5y")
+        ohlcv_df  = _stock_ohlcv(ticker, "5y")
         fig_price = go.Figure()
+
+        # Trace 0 — line (default)
         if not price_df.empty:
             fig_price.add_trace(go.Scatter(
                 x=price_df["date"], y=price_df["close"],
-                mode="lines",
+                mode="lines", name="Line", visible=True,
                 line=dict(color="#2563eb", width=2),
                 fill="tozeroy", fillcolor="rgba(37,99,235,0.06)",
                 hovertemplate="%{x|%b %d, %Y} — $%{y:,.2f}<extra></extra>",
             ))
-        fig_price.update_layout(**_pro_layout("Stock Price (5Y)", "USD ($)", height=300))
+
+        # Trace 1 — candlestick (hidden by default)
+        if not ohlcv_df.empty:
+            fig_price.add_trace(go.Candlestick(
+                x=ohlcv_df["date"],
+                open=ohlcv_df["open"], high=ohlcv_df["high"],
+                low=ohlcv_df["low"],  close=ohlcv_df["close"],
+                name="Candle", visible=False,
+                increasing_line_color="#10b981", increasing_fillcolor="#10b981",
+                decreasing_line_color="#ef4444", decreasing_fillcolor="#ef4444",
+            ))
+
+        fig_price.update_layout(**_pro_layout("Stock Price (5Y)", "USD ($)", height=320))
+
+        # Chart-type toggle (left side)
+        fig_price.update_layout(updatemenus=[dict(
+            type="buttons", direction="right", showactive=True, active=0,
+            x=0, xanchor="left", y=1.0, yanchor="bottom",
+            buttons=[
+                dict(label="Line",   method="update",
+                     args=[{"visible": [True, False]},
+                            {"xaxis.rangeslider.visible": False}]),
+                dict(label="Candle", method="update",
+                     args=[{"visible": [False, True]},
+                            {"xaxis.rangeslider.visible": False}]),
+            ],
+            bgcolor="rgba(248,249,250,0.95)",
+            bordercolor="#e5e7eb", borderwidth=1,
+            font=dict(size=10, color="#6b7280"),
+        )])
+
+        # Timeframe buttons (right side) — appended by _apply_range_buttons
         _apply_range_buttons(fig_price, price_df, "date", "close")
+        fig_price.update_layout(xaxis_rangeslider_visible=False)
         st.plotly_chart(fig_price, use_container_width=True)
         st.plotly_chart(_rsi_chart(rsi_daily, rsi_weekly), use_container_width=True)
 
