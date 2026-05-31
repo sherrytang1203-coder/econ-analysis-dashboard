@@ -3,6 +3,8 @@
 
 # Local data (SQLite DB and user-added stocks persist locally only)
 data/econ_data.db
+data/econ_data.db-shm
+data/econ_data.db-wal
 data/custom_stocks.json
 
 # Python
