@@ -427,8 +427,8 @@ def fetch_fcf_yield_forecast_2026(ticker: str) -> dict | None:
             revenue_growth = eps_growth
             fcf_2026 = avg_revenue * (1 + revenue_growth) * fcf_margin
 
-            # Market cap growth based on EPS growth (P/E * EPS → higher EPS = higher valuation)
-            mc_2026 = current_mc * (1 + eps_growth)
+            # Use current market cap (no growth assumption)
+            mc_2026 = current_mc
 
             # Calculate 2026 FCF Yield
             fcf_yield_2026 = (fcf_2026 / mc_2026 * 100) if mc_2026 > 0 else None

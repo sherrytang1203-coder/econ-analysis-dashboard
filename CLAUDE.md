@@ -97,12 +97,12 @@ The 2026 FCF Yield forecast uses a **hybrid approach** combining historical anal
    - Formula: `2026 Revenue × Historical FCF Margin`
    - Uses 3-year average margin as predictor of future efficiency
 
-6. **Project 2026 Market Cap**
-   - Formula: `Current Market Cap × (1 + EPS growth rate)`
-   - Higher earnings growth → higher valuation
+6. **Use Current Market Cap**
+   - Formula: `Current Market Cap` (no growth assumption)
+   - Conservative approach: assumes market cap stays flat
 
 7. **Calculate 2026 FCF Yield**
-   - Formula: `2026 FCF / 2026 Market Cap × 100`
+   - Formula: `2026 FCF / Current Market Cap × 100`
 
 ### Confidence Levels
 
