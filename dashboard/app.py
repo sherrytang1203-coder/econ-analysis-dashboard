@@ -74,8 +74,18 @@ st.markdown("""
     /* Shrink title */
     .stock-name  { font-size: 20px !important; }
 
-    /* Reduce chart height on mobile to avoid excessive scrolling */
-    .js-plotly-plot { max-height: 260px !important; }
+    /* Make charts wider and taller on mobile */
+    .js-plotly-plot {
+        width: 100vw !important;
+        height: auto !important;
+        max-height: none !important;
+    }
+
+    /* Make plotly containers full width */
+    div[data-testid="stPlotlyChart"] {
+        width: 100vw !important;
+        margin-left: calc(-50vw + 50%) !important;
+    }
 
     /* Full-width selectbox and inputs */
     div[data-testid="stSelectbox"],
