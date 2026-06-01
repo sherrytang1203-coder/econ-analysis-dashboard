@@ -54,7 +54,7 @@ def _ensure_csv_exists() -> bool:
         if not GUIDANCE_CSV.exists():
             with open(GUIDANCE_CSV, 'w', newline='', encoding='utf-8') as f:
                 writer = csv.DictWriter(f, fieldnames=[
-                    'company', 'snap_date', 'forecast_year', 'eps', 'fcf'
+                    'company', 'snap_date', 'forecast_year', 'eps', 'fcf', 'pdf_url'
                 ])
                 writer.writeheader()
         return True
@@ -63,7 +63,8 @@ def _ensure_csv_exists() -> bool:
 
 
 def append_to_csv(ticker: str, forecast_year: int, eps: Optional[float] = None,
-                  fcf: Optional[float] = None, snap_date: Optional[str] = None) -> bool:
+                  fcf: Optional[float] = None, snap_date: Optional[str] = None,
+                  pdf_url: Optional[str] = None) -> bool:
     """
     Append guidance record to CSV history file.
 
@@ -73,6 +74,7 @@ def append_to_csv(ticker: str, forecast_year: int, eps: Optional[float] = None,
         eps: EPS forecast (optional)
         fcf: FCF forecast in billions (optional)
         snap_date: Date when data was pulled (defaults to today)
+        pdf_url: URL to source PDF presentation (optional)
 
     Returns:
         True if appended successfully
@@ -85,14 +87,15 @@ def append_to_csv(ticker: str, forecast_year: int, eps: Optional[float] = None,
 
         with open(GUIDANCE_CSV, 'a', newline='', encoding='utf-8') as f:
             writer = csv.DictWriter(f, fieldnames=[
-                'company', 'snap_date', 'forecast_year', 'eps', 'fcf'
+                'company', 'snap_date', 'forecast_year', 'eps', 'fcf', 'pdf_url'
             ])
             writer.writerow({
                 'company': ticker,
                 'snap_date': snap_date,
                 'forecast_year': forecast_year,
                 'eps': eps if eps is not None else '',
-                'fcf': fcf if fcf is not None else ''
+                'fcf': fcf if fcf is not None else '',
+                'pdf_url': pdf_url if pdf_url else ''
             })
         return True
     except Exception:
@@ -140,7 +143,8 @@ def add_forecast(ticker: str, year: int, fcf_billions: float, eps_dollars: float
         forecast_year=year,
         eps=eps_dollars,
         fcf=fcf_billions,
-        snap_date=datetime.now().strftime("%Y-%m-%d")
+        snap_date=datetime.now().strftime("%Y-%m-%d"),
+        pdf_url=pdf_url
     )
 
     return json_saved and csv_saved
@@ -258,6 +262,13 @@ def get_csv_summary() -> str:
             year = record.get('forecast_year', 'N/A')
             eps = record.get('eps', 'N/A')
             fcf = record.get('fcf', 'N/A')
-            lines.append(f"  {snap_date} | Year {year} | EPS: ${eps} | FCF: ${fcf}B")
+            pdf_url = record.get('pdf_url', '')
+
+            line = f"  {snap_date} | Year {year} | EPS: ${eps} | FCF: ${fcf}B"
+            if pdf_url:
+                # Shorten URL for display
+                display_url = pdf_url.split('/')[-1] if '/' in pdf_url else pdf_url
+                line += f" | PDF: {display_url}"
+            lines.append(line)
 
     return "\n".join(lines)

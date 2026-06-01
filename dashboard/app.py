@@ -931,6 +931,9 @@ def _stock_metric_cards(info: dict, fcf_yield, curr_rsi_d, curr_rsi_w, fcf_forec
         <div class="mlabel" style="font-size:0.85em">Confidence: {fcf_forecast['confidence']}</div>
         <div class="mval" style="font-size:0.9em; opacity:0.8">EPS Growth: {fcf_forecast['eps_growth_rate']:.1f}%</div>
       </div>
+    </div>
+    <div style="margin-top:6px; padding-top:6px; font-size:0.75em; opacity:0.6">
+      {'<a href="' + fcf_forecast['pdf_url'] + '" target="_blank" style="color:inherit; text-decoration:underline">📄 Source PDF</a>' if fcf_forecast.get('pdf_url') else ''}
     </div>''' if fcf_forecast else ''}
   </div>
 

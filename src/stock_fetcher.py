@@ -359,6 +359,16 @@ def fetch_fcf_yield_forecast_2026(ticker: str, fcf_guidance_billions: float = No
             if trailing_eps and trailing_eps != 0:
                 eps_growth = ((forward_eps - trailing_eps) / abs(trailing_eps)) * 100
 
+            # Get PDF URL from stored guidance if available
+            pdf_url = ""
+            try:
+                from src.guidance_manager import get_forecast
+                stored = get_forecast(ticker, 2026)
+                if stored:
+                    pdf_url = stored.get("pdf_url", "")
+            except Exception:
+                pass
+
             return {
                 "fcf_yield_2026": round(fcf_yield, 2),
                 "fcf_2026": round(fcf_guidance_billions, 2),
@@ -368,6 +378,7 @@ def fetch_fcf_yield_forecast_2026(ticker: str, fcf_guidance_billions: float = No
                 "eps_growth_rate": round(eps_growth, 2),
                 "fcf_margin_hist": 0,  # Not applicable for official guidance
                 "capex_margin_hist": 0,  # Not applicable for official guidance
+                "pdf_url": pdf_url,  # Source PDF link
             }
         except Exception:
             return None
