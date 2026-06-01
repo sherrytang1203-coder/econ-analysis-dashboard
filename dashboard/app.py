@@ -1040,6 +1040,15 @@ _CARD_CSS = """
 .mval-sm      { font-size: 14px; font-weight: 600; line-height: 1.3; }
 .pos { color: #2ecc71; } .neg { color: #e74c3c; }
 .ob  { color: #e74c3c; } .os  { color: #2ecc71; }
+
+@media (max-width: 1024px) {
+  .metric-grid { gap: 8px; margin: 0; }
+  .mgroup { padding: 8px 6px; border-radius: 6px; }
+  .mgroup-title { font-size: 9px; margin-bottom: 6px; }
+  .mpair { gap: 4px; }
+  .mlabel { font-size: 10px; margin-bottom: 2px; }
+  .mval { font-size: 16px; }
+}
 </style>
 """
 
