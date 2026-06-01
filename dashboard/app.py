@@ -177,37 +177,45 @@ st.markdown("""
 }
 </style>
 <script>
-// Prevent dragging on charts
-let touchStartX = 0;
-let touchStartY = 0;
+// Prevent all dragging on charts - use pointer events and capture phase
+let isDraggingChart = false;
 
-document.addEventListener('touchstart', (e) => {
-  const plotDiv = e.target.closest('.js-plotly-plot');
-  if (plotDiv) {
-    touchStartX = e.touches[0].clientX;
-    touchStartY = e.touches[0].clientY;
-
-    // Blur any focused element
+// Capture all pointer/touch events on charts and block them
+document.addEventListener('pointerdown', (e) => {
+  if (e.target.closest('.js-plotly-plot') || e.target.closest('svg.main-svg')) {
+    isDraggingChart = true;
+    e.preventDefault();
+    e.stopPropagation();
     e.target.blur();
-    if (document.activeElement) {
-      document.activeElement.blur();
-    }
+    if (document.activeElement) document.activeElement.blur();
   }
-}, false);
+}, true);
+
+document.addEventListener('pointermove', (e) => {
+  if (isDraggingChart) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+}, true);
+
+document.addEventListener('pointerup', (e) => {
+  isDraggingChart = false;
+}, true);
+
+// Also block touch events
+document.addEventListener('touchstart', (e) => {
+  if (e.target.closest('.js-plotly-plot') || e.target.closest('svg.main-svg')) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+}, true);
 
 document.addEventListener('touchmove', (e) => {
-  const plotDiv = e.target.closest('.js-plotly-plot');
-  if (plotDiv) {
-    // Calculate movement
-    const moveX = Math.abs(e.touches[0].clientX - touchStartX);
-    const moveY = Math.abs(e.touches[0].clientY - touchStartY);
-
-    // If moving more than 5px horizontally or vertically in chart, prevent default
-    if (moveX > 5 || moveY > 5) {
-      e.preventDefault();
-    }
+  if (e.target.closest('.js-plotly-plot') || e.target.closest('svg.main-svg')) {
+    e.preventDefault();
+    e.stopPropagation();
   }
-}, { passive: false });
+}, { capture: true, passive: false });
 
 // Prevent focus on Plotly elements
 document.addEventListener('focus', (e) => {
