@@ -102,5 +102,13 @@
       "source": "Marsh & McLennan Q1 2026 earnings (analyst forecast FY2026)",
       "pdf_url": "https://www.sec.gov/Archives/edgar/data/62709/000006270926000096/mmc1q2026ex991newsrelease.htm"
     }
+  },
+  "JRVR": {
+    "2026": {
+      "fcf_billions": null,
+      "eps_dollars": 0.42,
+      "source": "James River Group trailing EPS",
+      "pdf_url": "https://investors.jrvrgroup.com/"
+    }
   }
 }
