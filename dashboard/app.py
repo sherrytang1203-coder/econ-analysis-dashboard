@@ -999,17 +999,6 @@ def render_single_stock(ticker: str) -> None:
 
         _stock_metric_cards(info, fcf_yield, curr_rsi_d, curr_rsi_w, fcf_forecast)
 
-        # Show source reference for official guidance
-        if fcf_forecast and fcf_forecast.get('confidence') == 'Official' and fcf_forecast.get('pdf_url'):
-            pdf_name = fcf_forecast['pdf_url'].split('/')[-1]
-            source_html = f'''
-            <div style="margin-top:12px; padding:8px; background:rgba(255,152,0,0.1); border-left:3px solid rgba(255,152,0,0.3); border-radius:4px; font-size:0.85em">
-                <span style="opacity:0.7">📋 Source: </span>
-                <a href="{fcf_forecast['pdf_url']}" target="_blank" style="color:#FF9800; text-decoration:underline">{pdf_name}</a>
-            </div>
-            '''
-            st.markdown(source_html, unsafe_allow_html=True)
-
     st.divider()
 
     pe = info.get("pe_ratio")
