@@ -341,8 +341,9 @@ def fetch_fcf_yield_forecast_2026(ticker: str, fcf_guidance_billions: float = No
         except Exception as e:
             pass
 
-    # If we have official EPS guidance, guarantee we return it (even if FCF calc fails)
-    if stored_guidance and stored_guidance.get("eps_dollars"):
+    # If we have official EPS guidance BUT NO FCF, return minimal forecast with EPS
+    # (Don't return early if we have FCF - let it fall through to FCF calculation)
+    if stored_guidance and stored_guidance.get("eps_dollars") and not fcf_guidance_billions:
         try:
             t = yf.Ticker(ticker)
             info = t.info
@@ -352,7 +353,7 @@ def fetch_fcf_yield_forecast_2026(ticker: str, fcf_guidance_billions: float = No
             else:
                 current_mc_billions = 0
 
-            # ALWAYS return something with EPS when we have guidance
+            # Return EPS-only forecast
             return {
                 "fcf_yield_2026": 0,
                 "fcf_2026": 0,
