@@ -863,6 +863,32 @@ _CARD_CSS = """
 </style>
 """
 
+def _forecast_source_html(fcf_forecast: dict) -> str:
+    """Generate HTML for forecast metrics with source attribution."""
+    if not fcf_forecast:
+        return ""
+
+    pdf_url = fcf_forecast.get("pdf_url", "")
+    pdf_name = pdf_url.split("/")[-1] if pdf_url else ""
+    is_official = fcf_forecast.get("confidence") == "Official"
+
+    source_line = ""
+    if is_official and pdf_name:
+        source_line = f'<div style="font-size:0.7em; opacity:0.5; margin-top:2px">(sourced from {pdf_name})</div>'
+
+    return f'''<div class="mpair" style="margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.1)">
+      <div class="mitem">
+        <div class="mlabel">FCF Yield 2026F</div>
+        <div class="mval">{fcf_forecast['fcf_yield_2026']:.1f}%</div>
+        {source_line}
+      </div>
+      <div class="mitem">
+        <div class="mlabel" style="font-size:0.85em">Confidence: {fcf_forecast['confidence']}</div>
+        <div class="mval" style="font-size:0.9em; opacity:0.8">EPS Growth: {fcf_forecast['eps_growth_rate']:.1f}%</div>
+      </div>
+    </div>'''
+
+
 def _stock_metric_cards(info: dict, fcf_yield, curr_rsi_d, curr_rsi_w, fcf_forecast=None) -> None:
     pe  = info.get("pe_ratio")
     fpe = info.get("forward_pe")
@@ -922,17 +948,7 @@ def _stock_metric_cards(info: dict, fcf_yield, curr_rsi_d, curr_rsi_w, fcf_forec
         <div class="mval {fcf_cls}">{v(fcf_yield,'.1f',suf='%') if fcf_yield is not None else 'N/A'}</div>
       </div>
     </div>
-    {f'''<div class="mpair" style="margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.1)">
-      <div class="mitem">
-        <div class="mlabel">FCF Yield 2026F</div>
-        <div class="mval">{fcf_forecast['fcf_yield_2026']:.1f}%</div>
-        {'<div style="font-size:0.7em; opacity:0.5; margin-top:2px">(sourced from ' + fcf_forecast.get(\'pdf_url\', \'\').split(\'/\')[-1] + ')</div>' if fcf_forecast.get('confidence') == 'Official' and fcf_forecast.get('pdf_url') else ''}
-      </div>
-      <div class="mitem">
-        <div class="mlabel" style="font-size:0.85em">Confidence: {fcf_forecast['confidence']}</div>
-        <div class="mval" style="font-size:0.9em; opacity:0.8">EPS Growth: {fcf_forecast['eps_growth_rate']:.1f}%</div>
-      </div>
-    </div>''' if fcf_forecast else ''}
+    {_forecast_source_html(fcf_forecast) if fcf_forecast else ''}
   </div>
 
   <div class="mgroup" style="--gc:#FF9800">
