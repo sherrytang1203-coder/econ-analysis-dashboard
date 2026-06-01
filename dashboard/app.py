@@ -75,14 +75,14 @@ st.markdown("""
     /* Shrink title */
     .stock-name  { font-size: 20px !important; }
 
-    /* Make charts full width on mobile with no margins */
+    /* Make charts full width on mobile with tight margins */
     .js-plotly-plot {
-        width: 100vw !important;
+        width: 100% !important;
         height: auto !important;
         max-height: none !important;
         margin: 0 !important;
         padding: 0 !important;
-        overflow: hidden !important;
+        overflow: visible !important;
     }
 
     /* Remove plotly internal margins */
@@ -93,16 +93,14 @@ st.markdown("""
 
     /* Force SVG to take full width */
     svg.main-svg {
-        width: 100vw !important;
+        width: 100% !important;
     }
 
-    /* Allow hover/tap tooltips but prevent scrolling & keyboard */
+    /* Hover tooltips only, prevent keyboard */
     .js-plotly-plot {
-        overflow: visible !important;
         touch-action: pan-y !important;
         outline: none !important;
         -webkit-tap-highlight-color: transparent !important;
-        user-select: none !important;
     }
 
     svg.main-svg {
@@ -512,7 +510,7 @@ def _pro_layout(title: str, y_title: str, height: int = 300) -> dict:
         margin=dict(l=58, r=24, t=50, b=40),
         hovermode="x unified",
         showlegend=False,
-        dragmode="zoom",
+        dragmode=False,
         hoverlabel=dict(bgcolor="white", bordercolor="#e5e7eb",
                         font=dict(size=12, color="#111827")),
     )
@@ -1382,26 +1380,11 @@ def render_single_stock(ticker: str) -> None:
         ("All", None),
     ]
     _apply_range_buttons(fig_price, price_df, "date", "close", timeframes=timeframes)
-    st.plotly_chart(fig_price, use_container_width=True, config={
-        "displayModeBar": False,
-        "scrollZoom": False,
-        "doubleClick": False,
-        "box": False,
-        "lasso": False,
-        "select": False,
-        "staticPlot": False,
-        "responsive": True
-    })
+    st.plotly_chart(fig_price, use_container_width=True, config={"displayModeBar": False})
 
     with st.container(border=False):
         st.plotly_chart(_rsi_chart(rsi_daily, rsi_weekly), use_container_width=True, config={
             "displayModeBar": False,
-            "scrollZoom": False,
-            "doubleClick": False,
-            "box": False,
-            "lasso": False,
-            "select": False,
-            "staticPlot": False,
             "responsive": True
         })
 
@@ -1456,7 +1439,7 @@ def render_single_stock(ticker: str) -> None:
                                categoryarray=all_year_strs, gridcolor="#f3f4f6",
                                tickfont=dict(size=11, color="#9ca3af"), showline=False),
                 )
-                st.plotly_chart(fig_pe, use_container_width=True, config={"displayModeBar": False, "scrollZoom": False, "doubleClick": False, "box": False, "lasso": False, "select": False})
+                st.plotly_chart(fig_pe, use_container_width=True, config={"displayModeBar": False})
                 if loss_years:
                     st.caption(f"✕ Loss year(s): {', '.join(str(y) for y in sorted(loss_years))}")
             else:
@@ -1479,7 +1462,7 @@ def render_single_stock(ticker: str) -> None:
                                tickfont=dict(size=11, color="#9ca3af"),
                                zeroline=False, showline=False),
                 )
-                st.plotly_chart(fig_rev, use_container_width=True, config={"displayModeBar": False, "scrollZoom": False, "doubleClick": False, "box": False, "lasso": False, "select": False})
+                st.plotly_chart(fig_rev, use_container_width=True, config={"displayModeBar": False})
             else:
                 st.info("Revenue data unavailable.")
 
