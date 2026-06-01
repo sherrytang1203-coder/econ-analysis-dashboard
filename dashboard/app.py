@@ -512,7 +512,7 @@ def _pro_layout(title: str, y_title: str, height: int = 300) -> dict:
         margin=dict(l=58, r=24, t=50, b=40),
         hovermode="x unified",
         showlegend=False,
-        dragmode=False,
+        dragmode="zoom",
         hoverlabel=dict(bgcolor="white", bordercolor="#e5e7eb",
                         font=dict(size=12, color="#111827")),
     )
