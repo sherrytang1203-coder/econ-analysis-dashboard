@@ -104,10 +104,9 @@ st.markdown("""
 
     /* Make plotly containers full width, no margins */
     div[data-testid="stPlotlyChart"] {
-        width: 100vw !important;
+        width: 100% !important;
         margin: 0 !important;
         padding: 0 !important;
-        margin-left: calc(-50vw + 50%) !important;
     }
 
     /* Remove container borders and padding on mobile */
