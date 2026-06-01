@@ -354,10 +354,12 @@ def fetch_fcf_yield_forecast_2026(ticker: str, fcf_guidance_billions: float = No
 
             fcf_yield = (fcf_guidance_billions / market_cap_billions) * 100
 
-            # Calculate EPS growth rate for display
+            # Calculate EPS growth rate for display (capped to ±100%)
             eps_growth = 0
             if trailing_eps and trailing_eps != 0:
-                eps_growth = ((forward_eps - trailing_eps) / abs(trailing_eps)) * 100
+                eps_growth = (forward_eps - trailing_eps) / abs(trailing_eps)
+                eps_growth = max(-1.0, min(1.0, eps_growth))  # Cap to [-100%, +100%]
+                eps_growth = eps_growth * 100  # Convert to percentage
 
             # Get PDF URL from stored guidance if available
             pdf_url = ""
@@ -398,7 +400,12 @@ def fetch_fcf_yield_forecast_2026(ticker: str, fcf_guidance_billions: float = No
             return None
 
         # Calculate EPS growth rate (forward vs trailing)
-        eps_growth = (forward_eps - trailing_eps) / abs(trailing_eps) if trailing_eps != 0 else 0
+        # Cap at ±100% to avoid extreme values for stocks with very low trailing EPS
+        if trailing_eps != 0:
+            eps_growth = (forward_eps - trailing_eps) / abs(trailing_eps)
+            eps_growth = max(-1.0, min(1.0, eps_growth))  # Cap to [-100%, +100%]
+        else:
+            eps_growth = 0
 
         # Get historical financials for margin calculations (3-year average)
         try:
