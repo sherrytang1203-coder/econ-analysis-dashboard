@@ -42,7 +42,20 @@ def fetch_stock_price(ticker: str, period: str = "5y") -> pd.DataFrame:
 def fetch_stock_info(ticker: str) -> dict:
     """Return key current metrics."""
     try:
-        info = yf.Ticker(ticker).info
+        t = yf.Ticker(ticker)
+        info = t.info
+
+        # Get dividend yield and annual dividend
+        dividend_yield = None
+        annual_dividend = None
+
+        # Get dividend yield - yfinance provides dividendYield as percentage (6.09, not 0.0609)
+        if "dividendYield" in info and info["dividendYield"]:
+            dividend_yield = info["dividendYield"]
+
+        # Get annual dividend amount (per share)
+        annual_dividend = info.get("trailingAnnualDividendRate")
+
         return {
             "name":        info.get("longName", ticker),
             "sector":      info.get("sector", ""),
@@ -53,9 +66,63 @@ def fetch_stock_info(ticker: str) -> dict:
             "eps":         info.get("trailingEps"),
             "52w_high":    info.get("fiftyTwoWeekHigh"),
             "52w_low":     info.get("fiftyTwoWeekLow"),
+            "dividend_yield": dividend_yield,
+            "annual_dividend": annual_dividend,
         }
     except Exception:
         return {"name": ticker}
+
+
+def fetch_dividend_yield_history(ticker: str) -> pd.DataFrame:
+    """Return historical dividend yield as DataFrame with columns: date, dividend_yield."""
+    try:
+        t = yf.Ticker(ticker)
+
+        # Get dividend history
+        dividends = t.dividends
+        if dividends.empty:
+            return pd.DataFrame(columns=["date", "dividend_yield"])
+
+        # Get price history
+        prices = yf.download(ticker, period="5y", progress=False, auto_adjust=True)
+        if prices.empty:
+            return pd.DataFrame(columns=["date", "dividend_yield"])
+
+        close = prices["Close"]
+        if isinstance(close, pd.DataFrame):
+            close = close.iloc[:, 0]
+
+        # Normalize timezones: remove tz from close index and convert div_date to naive
+        close.index = close.index.tz_localize(None)
+
+        # Calculate trailing annual dividend yield for each dividend payment date
+        result_data = []
+        for div_date, div_amount in dividends.items():
+            # Convert dividend date to naive (remove timezone)
+            div_date_naive = pd.Timestamp(div_date).tz_localize(None)
+
+            # Find closest price before dividend date
+            prices_before = close[close.index <= div_date_naive]
+            if not prices_before.empty:
+                price = prices_before.iloc[-1]
+                # Get past 4 dividend payments (1 year worth for quarterly dividends)
+                past_divs = dividends[dividends.index.tz_localize(None) <= div_date_naive].tail(4)
+                annual_div = past_divs.sum()
+                yield_pct = (annual_div / price) * 100 if price > 0 else None
+                if yield_pct and yield_pct > 0:
+                    result_data.append({
+                        "date": div_date_naive,
+                        "dividend_yield": yield_pct
+                    })
+
+        if not result_data:
+            return pd.DataFrame(columns=["date", "dividend_yield"])
+
+        df = pd.DataFrame(result_data)
+        df = df.sort_values("date").drop_duplicates(subset=["date"]).reset_index(drop=True)
+        return df
+    except Exception as e:
+        return pd.DataFrame(columns=["date", "dividend_yield"])
 
 
 def fetch_revenue(ticker: str) -> pd.DataFrame:

@@ -36,6 +36,109 @@ RSS feeds ──► src/news_fetcher.py ──► src/news_pipeline.py ──►
 Groq/Llama ──► src/news_analyzer.py (called inside news_pipeline)
 ```
 
+### Data Update Schedules
+
+#### **FRED (Federal Reserve Economic Data)** — Macro Economy Tab
+
+**How it works:**
+- Data is **stored persistently** in the database (Supabase or SQLite)
+- Updates only when user clicks **"Sync FRED Data"** button in app header
+- First run auto-syncs all series if database is empty (~1-5 minutes)
+
+**Update process:**
+1. Click "Sync FRED Data" → calls `run_update(store, fred)` in `src/updater.py`
+2. Fetches latest data from FRED API for all configured series
+3. Stores in database with timestamps (`last_updated`, `last_fetched`)
+4. Each metric shows when FRED released that data point (varies by indicator)
+
+**Metric label display:**
+```
+Building Permits (2026-05-28)          ← FRED release date
+Unemployment Rate (2026-05-31)         ← FRED release date
+Consumer Confidence (2026-05-31)       ← FRED release date
+```
+
+**Section header:**
+```
+📊 Source: FRED • Last fetched: 2026-05-31 19:30
+                    ↑ timestamp when you last clicked "Sync FRED Data"
+```
+
+**Release schedules (varies by series):**
+- **Monthly:** Unemployment, Building Permits, Industrial Production, Retail Sales
+- **Weekly:** Initial Claims, Continuing Claims
+- **Quarterly:** GDP, other longer-cycle indicators
+- Data typically released 1-10 days after month/week end (varies by agency)
+
+---
+
+#### **Yahoo Finance** — Capital Markets & Stock Tabs
+
+**How it works:**
+- Data is **never stored**, always fetched fresh
+- Updates automatically every time you load the page
+- Cached for 1 hour (`ttl=3600` in Streamlit `@st.cache_data`)
+
+**Update process:**
+1. Load app or navigate to Capital Markets tab
+2. Cached data returned if loaded within last 1 hour
+3. After 1 hour or manual cache clear → fresh fetch from Yahoo Finance
+4. During market hours → real-time or near-real-time prices
+
+**Sections using Yahoo Finance (always live):**
+- Major Indices (S&P 500, Dow, Nasdaq, Russell 2000)
+- Sector Performance (11 S&P 500 sectors)
+- Commodities (Gold, Oil, Natural Gas, Copper)
+- Rates & Volatility (10Y/2Y Treasury yields, VIX)
+- Stock Tracing (individual stock prices, RSI, P/E, FCF, etc.)
+
+**Section header display:**
+```
+📊 Source: Yahoo Finance • Real-time (during market hours)
+                            ↑ always live, no storage
+```
+
+**Update frequency:**
+- **During market hours (9:30 AM - 4:00 PM ET):** Live/near-real-time updates
+- **After market close:** Data becomes stale until next open
+- **Weekends/holidays:** No updates (markets closed)
+- **Cache:** 1 hour, so refreshes max 24 times per day
+
+---
+
+#### **RSS News Feeds** — News Feed Tab
+
+**How it works:**
+- Fetched from configured RSS feeds
+- Stored in database for ranking/deduplication
+- "Run Today's Analysis" button triggers fresh fetch + AI ranking via Groq/Llama
+
+**Release schedule:**
+- Continuous (news articles published throughout day)
+- Pipeline run frequency: User-triggered, not automatic
+- Analysis cache: Per-day (same run serves all daily views)
+
+---
+
+#### **Summary Table**
+
+| Source | Storage | Update Trigger | Cache | Frequency |
+|--------|---------|-----------------|-------|-----------|
+| **FRED** | ✅ Persistent DB | Manual ("Sync FRED Data" button) | — | Varies (monthly/weekly/quarterly) |
+| **Yahoo Finance** | ❌ Never | Automatic on page load | 1 hour | Real-time (market hours) |
+| **Stock Prices** | ❌ Never | Automatic on page load | 1 hour | Real-time (market hours) |
+| **News RSS** | ✅ Persistent DB | Manual ("Run Today's Analysis") | Per-day | Continuous (user-triggered) |
+
+---
+
+#### **Key Points**
+
+1. **FRED data is manual**: Click "Sync FRED Data" to pull latest
+2. **Market data is automatic**: Refreshes live on each page visit
+3. **Dates in labels show source timestamps**, not when you synced
+4. **"Last fetched" in header** = when you last synced (FRED only)
+5. **Cache is per-indicator**: Yahoo Finance caches 1 hour, FRED stores indefinitely
+
 ### Storage layer (`src/store.py`)
 
 `Store` is the single database abstraction. On init it checks for `SUPABASE_URL` + `SUPABASE_KEY`; if both are set it uses the Supabase REST client, otherwise SQLite. All callers receive a `Store` instance — never a raw connection. The four Supabase/SQLite tables are: `series_metadata`, `observations`, `articles`, `watchlist`.

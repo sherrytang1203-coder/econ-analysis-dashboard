@@ -21,7 +21,7 @@ from src.market_fetcher import fetch_market_snapshot, fetch_historical, fetch_se
 from src.stock_fetcher import (fetch_stock_info, fetch_stock_price, fetch_stock_ohlcv,
                                fetch_revenue, fetch_pe_history, fetch_loss_years,
                                fetch_fcf_yield, fetch_fcf_history, fetch_rsi,
-                               fetch_fcf_yield_forecast_2026)
+                               fetch_fcf_yield_forecast_2026, fetch_dividend_yield_history)
 from src.news_fetcher import deduplicate_by_similarity
 from src.news_analyzer import get_groq_client, groq_key_configured
 from src.news_pipeline import run_pipeline, needs_run
@@ -153,6 +153,17 @@ def _save_custom_stock(ticker: str, name: str) -> None:
     except Exception as e:
         st.session_state["watchlist_error"] = str(e)
 
+
+def _remove_custom_stock(ticker: str) -> None:
+    try:
+        if store.is_supabase:
+            store._supa.table("watchlist").delete().eq("ticker", ticker).execute()
+        else:
+            store._conn.execute("DELETE FROM watchlist WHERE ticker = ?", (ticker,))
+            store._conn.commit()
+    except Exception as e:
+        st.session_state["watchlist_error"] = str(e)
+
 # ── Cached market data fetchers ───────────────────────────────────────────────
 
 @st.cache_data(ttl=3600)
@@ -170,6 +181,20 @@ def _historical(ticker, period="2y"):
 @st.cache_data(ttl=3600)
 def _stock_info(ticker):
     return fetch_stock_info(ticker)
+
+@st.cache_data(ttl=3600)
+def _stock_current_price(ticker):
+    """Get current stock price and daily change."""
+    try:
+        import yfinance as yf
+        t = yf.Ticker(ticker)
+        info = t.info
+        current = info.get("currentPrice") or info.get("regularMarketPrice")
+        change = info.get("regularMarketChange", 0)
+        change_pct = info.get("regularMarketChangePercent", 0)
+        return {"price": current, "change": change, "change_pct": change_pct}
+    except:
+        return {"price": None, "change": 0, "change_pct": 0}
 
 @st.cache_data(ttl=3600)
 def _stock_price(ticker, period="5y"):
@@ -198,6 +223,10 @@ def _stock_fcf_yield(ticker):
 @st.cache_data(ttl=3600)
 def _stock_fcf_history(ticker):
     return fetch_fcf_history(ticker)
+
+@st.cache_data(ttl=3600)
+def _stock_dividend_yield_history(ticker):
+    return fetch_dividend_yield_history(ticker)
 
 @st.cache_data(ttl=3600)
 def _stock_rsi(ticker, weekly=False):
@@ -468,6 +497,7 @@ def _line_chart(df: pd.DataFrame, title: str, yaxis: str,
 def render_capital_markets():
     # ── Major indices ─────────────────────────────────────────────────────────
     st.subheader("Major Indices")
+    st.caption("📊 [Source: Yahoo Finance](https://finance.yahoo.com) • Real-time (during market hours)")
     idx_df = _market_snapshot(tuple(INDEX_TICKERS.items()))
     if not idx_df.empty:
         cols = st.columns(len(idx_df))
@@ -478,6 +508,7 @@ def render_capital_markets():
                 f"{row.current:,.2f}",
                 f"{row.pct_change:+.2f}%",
                 delta_color="inverse" if inv else "normal",
+                help=f"Ticker: {row.ticker}",
             )
     else:
         st.warning("Could not load index data.")
@@ -589,12 +620,19 @@ def render_capital_markets():
     col_a, col_b = st.columns(2)
     with col_a:
         st.subheader("Commodities")
+        st.caption("📊 [Source: Yahoo Finance](https://finance.yahoo.com) • Real-time (during market hours)")
         if not comm_df.empty:
             c_cols = st.columns(len(comm_df))
             for col, row in zip(c_cols, comm_df.itertuples()):
-                col.metric(row.name, f"{row.current:,.2f}", f"{row.pct_change:+.2f}%")
+                col.metric(
+                    row.name,
+                    f"{row.current:,.2f}",
+                    f"{row.pct_change:+.2f}%",
+                    help=f"Ticker: {row.ticker}",
+                )
     with col_b:
         st.subheader("Rates & Volatility")
+        st.caption("📊 [Source: Yahoo Finance](https://finance.yahoo.com) • Real-time (during market hours)")
         if not rate_df.empty:
             r_cols = st.columns(len(rate_df))
             for col, row in zip(r_cols, rate_df.itertuples()):
@@ -604,6 +642,7 @@ def render_capital_markets():
                     f"{row.current:.2f}%",
                     f"{row.pct_change:+.2f}%",
                     delta_color="inverse" if inv else "normal",
+                    help=f"Ticker: {row.ticker}",
                 )
 
 
@@ -685,6 +724,20 @@ def render_market_leading_charts():
 def render_indicator_group(group_key: str, series_dict: dict) -> None:
     series_ids = list(series_dict.keys())
 
+    # Get latest fetch date for header
+    latest_fetch_date = "Unknown"
+    if not meta_df.empty:
+        fetch_dates = meta_df["last_fetched"].dropna()
+        if not fetch_dates.empty:
+            try:
+                latest_fetch = pd.to_datetime(fetch_dates).max()
+                latest_fetch_date = latest_fetch.strftime('%Y-%m-%d %H:%M')
+            except:
+                pass
+
+    # Add source header for FRED data with fetch date
+    st.caption(f"📊 [Source: FRED](https://fred.stlouisfed.org) • Last fetched: {latest_fetch_date}")
+
     # Metric cards
     cols = st.columns(min(len(series_ids), 4))
     for i, sid in enumerate(series_ids):
@@ -701,15 +754,46 @@ def render_indicator_group(group_key: str, series_dict: dict) -> None:
         prev   = clean.iloc[-2] if len(clean) >= 2 else None
         delta  = _delta_str(latest, prev)
         row    = meta_df[meta_df["series_id"] == sid]
-        last_upd = row["last_updated"].iloc[0] if not row.empty else "Unknown"
+        last_upd = row["last_updated"].iloc[0] if not row.empty else None
+        last_fetched = row["last_fetched"].iloc[0] if not row.empty else None
         inv    = sid in INVERSE_DELTA_SERIES
 
+        # Format date for label (yyyy-mm-dd) - try metadata first, then data date
+        date_label = ""
+        if last_upd:
+            try:
+                # Handle "fallback:YYYY-MM-DD" format
+                date_str = last_upd.replace("fallback:", "") if isinstance(last_upd, str) else last_upd
+                date_obj = pd.to_datetime(date_str)
+                date_label = f" ({date_obj.strftime('%Y-%m-%d')})"
+            except Exception as e:
+                # If metadata date fails, try data date
+                if not df.empty:
+                    try:
+                        latest_date = pd.to_datetime(df["date"].iloc[-1])
+                        date_label = f" ({latest_date.strftime('%Y-%m-%d')})"
+                    except:
+                        pass
+        elif not df.empty:
+            # Fallback: use latest data date if metadata unavailable
+            try:
+                latest_date = pd.to_datetime(df["date"].iloc[-1])
+                date_label = f" ({latest_date.strftime('%Y-%m-%d')})"
+            except:
+                pass
+
+        # Build help text
+        help_text = (
+            f"**Unit:** {info['unit']}\n"
+            f"**Frequency:** {info['frequency']}"
+        )
+
         col.metric(
-            label=info["name"],
+            label=f"{info['name']}{date_label}",
             value=_format_value(latest, info["unit"]),
             delta=delta,
             delta_color="inverse" if inv else "normal",
-            help=f"{info['unit']}  ·  {info['frequency']}  ·  Updated: {last_upd}",
+            help=help_text,
         )
 
     # Yield spread bonus card in Leading tab
@@ -725,12 +809,44 @@ def render_indicator_group(group_key: str, series_dict: dict) -> None:
                 prev_spread   = spread.iloc[-2] if len(spread) >= 2 else None
                 delta_spread  = _delta_str(latest_spread, prev_spread)
                 extra_col = cols[len(series_ids) % 4] if len(series_ids) < 4 * len(cols) else st.columns(1)[0]
+
+                # Get last updated info for yield spreads
+                row_10 = meta_df[meta_df["series_id"] == "DGS10"]
+                last_upd_spread = row_10["last_updated"].iloc[0] if not row_10.empty else None
+
+                # Format date for label (yyyy-mm-dd) - try metadata first, then data date
+                date_label = ""
+                if last_upd_spread:
+                    try:
+                        # Handle "fallback:YYYY-MM-DD" format
+                        date_str = last_upd_spread.replace("fallback:", "") if isinstance(last_upd_spread, str) else last_upd_spread
+                        date_obj = pd.to_datetime(date_str)
+                        date_label = f" ({date_obj.strftime('%Y-%m-%d')})"
+                    except Exception as e:
+                        # If metadata date fails, try data date
+                        try:
+                            latest_date = pd.to_datetime(df10["date"].iloc[-1])
+                            date_label = f" ({latest_date.strftime('%Y-%m-%d')})"
+                        except:
+                            pass
+                else:
+                    # Fallback: use latest data date if metadata unavailable
+                    try:
+                        latest_date = pd.to_datetime(df10["date"].iloc[-1])
+                        date_label = f" ({latest_date.strftime('%Y-%m-%d')})"
+                    except:
+                        pass
+
+                help_text = (
+                    f"10-Year minus 2-Year Treasury yield spread\n"
+                    f"Negative = inverted curve (recession indicator)"
+                )
                 extra_col.metric(
-                    "Yield Spread (10Y−2Y)",
+                    f"Yield Spread (10Y−2Y){date_label}",
                     f"{latest_spread:.2f}%",
                     delta_spread,
                     delta_color="normal",
-                    help="10-Year minus 2-Year Treasury yield. Negative = inverted curve.",
+                    help=help_text,
                 )
 
     st.divider()
@@ -887,11 +1003,11 @@ def _get_forecast_html_block(fcf_forecast: dict) -> str:
         confidence = fcf_forecast.get("confidence", "Unknown")
         eps_growth = fcf_forecast.get("eps_growth_rate", 0)
 
-        # Source attribution - clickable link
+        # Source attribution - clickable link with tooltip
         source_link = ""
         if pdf_url:
             source_label = pdf_name if pdf_name and pdf_name != "Source" else "Company Source"
-            source_link = f'<a href="{pdf_url}" target="_blank" style="font-size:0.65em; opacity:0.7; color:#0066cc; text-decoration:underline; display:block; margin-top:3px">📋 Source: {source_label}</a>'
+            source_link = f'<a href="{pdf_url}" target="_blank" title="{source_label}" style="font-size:0.65em; opacity:0.7; color:#0066cc; text-decoration:underline; display:block; margin-top:3px; cursor:help;">📋 Source</a>'
 
         # FCF source - show if official guidance (fcf_2026 > 0 indicates official)
         fcf_source = ""
@@ -903,26 +1019,39 @@ def _get_forecast_html_block(fcf_forecast: dict) -> str:
         if eps_2026 and source_link:
             eps_source = source_link
 
-        # FCF 2026 section
-        fcf_section = f'<div class="mitem"><div class="mlabel">FCF 2026F</div><div class="mval">${fcf_2026:.2f}B</div>{fcf_source}</div>'
+        # Build forecast metrics with better layout
+        forecast_html = '<div style="margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.1);">'
 
-        # EPS 2026 section (if available)
-        eps_section = ""
+        # Row 1: FCF and EPS forecasts
+        forecast_html += '<div class="mpair">'
+        if fcf_2026 > 0:
+            forecast_html += f'<div class="mitem"><div class="mlabel">FCF 2026F</div><div class="mval">${fcf_2026:.2f}B</div>{fcf_source}</div>'
         if eps_2026:
-            eps_section = f'<div class="mitem"><div class="mlabel">EPS 2026F</div><div class="mval">${eps_2026:.2f}</div>{eps_source}</div>'
+            forecast_html += f'<div class="mitem"><div class="mlabel">EPS 2026F</div><div class="mval">${eps_2026:.2f}</div>{eps_source}</div>'
+        forecast_html += f'<div class="mitem"><div class="mlabel">FCF Yield 2026F</div><div class="mval">{fcf_yield:.1f}%</div></div>'
+        forecast_html += '</div>'
 
-        return f'<div class="mpair" style="margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.1)">{fcf_section}{eps_section}<div class="mitem"><div class="mlabel">FCF Yield 2026F</div><div class="mval">{fcf_yield:.1f}%</div></div><div class="mitem"><div class="mlabel" style="font-size:0.85em">Confidence: {confidence}</div><div class="mval" style="font-size:0.9em; opacity:0.8">EPS Growth: {eps_growth:.1f}%</div></div></div>'
+        # Row 2: Confidence and Growth
+        forecast_html += f'<div class="mpair" style="margin-top:6px;">'
+        forecast_html += f'<div class="mitem"><div class="mlabel">Confidence</div><div class="mval" style="font-size:15px;">{confidence}</div></div>'
+        forecast_html += f'<div class="mitem"><div class="mlabel">EPS Growth</div><div class="mval" style="font-size:15px;">{eps_growth:.1f}%</div></div>'
+        forecast_html += '</div>'
+        forecast_html += '</div>'
+
+        return forecast_html
     except Exception as e:
         return f"<div style='color:red;'>Error rendering forecast: {str(e)}</div>"
 
 
-def _stock_metric_cards(info: dict, fcf_yield, curr_rsi_d, curr_rsi_w, fcf_forecast=None) -> None:
+def _stock_metric_cards(info: dict, fcf_yield, curr_rsi_d, curr_rsi_w, fcf_forecast=None, ticker: str = "", price_data: dict = None) -> None:
     pe  = info.get("pe_ratio")
     fpe = info.get("forward_pe")
     eps = info.get("eps")
     mc  = info.get("market_cap")
     hi  = info.get("52w_high")
     lo  = info.get("52w_low")
+    div_yield = info.get("dividend_yield")
+    div_annual = info.get("annual_dividend")
 
     def v(val, fmt, pre="", suf=""):
         return f"{pre}{val:{fmt}}{suf}" if val is not None else "N/A"
@@ -939,12 +1068,23 @@ def _stock_metric_cards(info: dict, fcf_yield, curr_rsi_d, curr_rsi_w, fcf_forec
     sector  = info.get("sector", "")
     industry = info.get("industry", "")
 
+    # Add ticker and price to name if provided
+    ticker_suffix = f" ({ticker})" if ticker else ""
+    price_suffix = ""
+    if price_data and price_data.get("price"):
+        price = price_data["price"]
+        change = price_data.get("change", 0)
+        change_pct = price_data.get("change_pct", 0)
+        color = "#2ecc71" if change >= 0 else "#e74c3c"  # green for up, red for down
+        arrow = "▲" if change >= 0 else "▼"
+        price_suffix = f'  <span style="font-size:20px; color:{color};">${price:.2f} {arrow} {abs(change_pct):.2f}%</span>'
+
     badge_sec = f'<span class="badge badge-sector">{sector}</span>' if sector else ""
     badge_ind = f'<span class="badge badge-industry">{industry}</span>' if industry else ""
 
     html = f"""{_CARD_CSS}
 <div class="stock-header">
-  <div class="stock-name">{name}</div>
+  <div class="stock-name">{name}{ticker_suffix}{price_suffix}</div>
   <div>{badge_sec}{badge_ind}</div>
 </div>
 <div class="metric-grid">
@@ -992,6 +1132,20 @@ def _stock_metric_cards(info: dict, fcf_yield, curr_rsi_d, curr_rsi_w, fcf_forec
     </div>
   </div>
 
+  <div class="mgroup" style="--gc:#E91E63">
+    <div class="mgroup-title">Dividend Income</div>
+    <div class="mpair">
+      <div class="mitem">
+        <div class="mlabel">Dividend Yield</div>
+        <div class="mval">{v(div_yield,'.2f',suf='%') if div_yield else 'N/A'}</div>
+      </div>
+      <div class="mitem">
+        <div class="mlabel">Annual Dividend</div>
+        <div class="mval">{v(div_annual,'.2f','$') if div_annual else 'N/A'}</div>
+      </div>
+    </div>
+  </div>
+
   <div class="mgroup" style="--gc:#9C27B0">
     <div class="mgroup-title">Momentum (RSI 14)</div>
     <div class="mpair">
@@ -1012,8 +1166,19 @@ def _stock_metric_cards(info: dict, fcf_yield, curr_rsi_d, curr_rsi_w, fcf_forec
 
 
 def render_single_stock(ticker: str) -> None:
+    # CSS for red remove button
+    st.markdown("""
+    <style>
+    [data-testid="stButton"] button[key="remove_button"] {
+        background-color: #ef4444 !important;
+        color: white !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     with st.spinner("Loading stock data..."):
         info         = _stock_info(ticker)
+        current_price = _stock_current_price(ticker)
         fcf_yield    = _stock_fcf_yield(ticker)
         fcf_forecast = _stock_fcf_forecast_2026(ticker)
         rsi_daily    = _stock_rsi(ticker, weekly=False)
@@ -1021,7 +1186,27 @@ def render_single_stock(ticker: str) -> None:
         curr_rsi_d   = float(rsi_daily["rsi"].iloc[-1])  if not rsi_daily.empty  else None
         curr_rsi_w   = float(rsi_weekly["rsi"].iloc[-1]) if not rsi_weekly.empty else None
 
-        _stock_metric_cards(info, fcf_yield, curr_rsi_d, curr_rsi_w, fcf_forecast)
+    # Handle remove button setup
+    custom_stocks = _load_custom_stocks()
+    is_custom = ticker in custom_stocks
+
+    # Display metrics and remove button on same "row" using columns
+    col_metrics, col_btn = st.columns([18, 2], gap="large")
+
+    with col_metrics:
+        # Load metrics (includes stock title with sector/industry badges)
+        _stock_metric_cards(info, fcf_yield, curr_rsi_d, curr_rsi_w, fcf_forecast, ticker, current_price)
+
+    with col_btn:
+        if st.button("Remove", key=f"remove_{ticker}", help="Remove from watchlist"):
+            if is_custom:
+                _remove_custom_stock(ticker)
+            else:
+                st.session_state.hidden_stocks.add(ticker)
+
+            st.success(f"Removed {ticker}")
+            st.session_state["pending_select"] = None
+            st.rerun()
 
     st.divider()
 
@@ -1216,13 +1401,45 @@ def render_single_stock(ticker: str) -> None:
             else:
                 st.info("FCF Yield data unavailable.")
 
+    # ── Dividend Trend ───────────────────────────────────────────────────────
+    div_hist = _stock_dividend_yield_history(ticker)
+    if not div_hist.empty:
+        st.markdown('<div class="sec-label">Dividend Trend</div>', unsafe_allow_html=True)
+        with st.container(border=True):
+            fig_div = go.Figure(go.Scatter(
+                x=div_hist["date"], y=div_hist["dividend_yield"],
+                mode="lines+markers", name="Dividend Yield",
+                line=dict(color="#ec4899", width=2),
+                marker=dict(size=6, color="#ec4899",
+                           line=dict(width=1.5, color="white")),
+                hovertemplate="%{x|%b %Y} — Yield: %{y:.2f}%<extra></extra>",
+            ))
+            fig_div.update_layout(**_pro_layout("Dividend Yield — Historical", "%"))
+            fig_div.update_layout(
+                xaxis=dict(gridcolor="#f3f4f6",
+                          tickfont=dict(size=11, color="#9ca3af"), showline=False),
+                yaxis=dict(gridcolor="#f3f4f6",
+                          tickfont=dict(size=11, color="#9ca3af"),
+                          zeroline=False, showline=False),
+                showlegend=False,
+                dragmode=False,
+            )
+            st.plotly_chart(fig_div, use_container_width=True, config={"displayModeBar": False, "scrollZoom": False})
+
 
 def render_stock_tracing() -> None:
     if "watchlist_error" in st.session_state:
         st.error(f"Watchlist save failed: {st.session_state.pop('watchlist_error')}")
 
+    # Initialize hidden stocks list (for removed defaults)
+    if "hidden_stocks" not in st.session_state:
+        st.session_state.hidden_stocks = set()
+
     custom   = _load_custom_stocks()
     all_stocks = {**TRACKED_STOCKS, **custom}
+
+    # Filter out hidden stocks (removed defaults)
+    all_stocks = {k: v for k, v in all_stocks.items() if k not in st.session_state.hidden_stocks}
     tickers  = list(all_stocks.keys())
 
     # ── Controls row ──────────────────────────────────────────────────────────
@@ -1244,7 +1461,7 @@ def render_stock_tracing() -> None:
 
     with col_search:
         search_input = st.text_input("Search ticker", placeholder="e.g. AAPL",
-                                     label_visibility="hidden")
+                                     label_visibility="hidden", key="stock_search_input")
     with col_btn:
         st.write("")
         search_clicked = st.button("Search", type="primary", use_container_width=True)
@@ -1257,10 +1474,27 @@ def render_stock_tracing() -> None:
         st.caption("*Auto-updates after earnings releases at 9:30 AM & 6:00 PM ET*")
 
     # ── Search logic ──────────────────────────────────────────────────────────
+    # Trigger search on button click OR when Enter is pressed in search box (text_input rerun)
+    should_search = False
+    search_query = ""
+
     if search_clicked and search_input:
-        query = search_input.strip().upper()
+        should_search = True
+        search_query = search_input
+    elif search_input and search_input != st.session_state.get("last_search_input", ""):
+        # Detect Enter key - when search_input changes and is not empty
+        # This happens when user presses Enter in the text field
+        should_search = True
+        search_query = search_input
+
+    # Store current input for next comparison
+    st.session_state["last_search_input"] = search_input
+
+    if should_search and search_query:
+        query = search_query.strip().upper()
         if query in all_stocks:
             st.info(f"**{query}** is already in your watchlist.")
+            st.session_state.pop("search_result", None)
         else:
             with st.spinner(f"Looking up {query}…"):
                 result_info = fetch_stock_info(query)
@@ -1268,27 +1502,37 @@ def render_stock_tracing() -> None:
                 st.session_state["search_result"] = {"ticker": query, "info": result_info}
             else:
                 st.warning(f"Could not find **{query}**. Check the symbol and try again.")
+                st.session_state.pop("search_result", None)
 
     if "search_result" in st.session_state:
         res  = st.session_state["search_result"]
         t, info = res["ticker"], res["info"]
         mc   = info.get("market_cap")
         mc_str = f"${mc/1e9:.1f}B" if mc else "N/A"
+
+        # Show search result info
         st.info(
             f"**{info.get('name', t)}** ({t})  ·  {info.get('sector', '')}  ·  "
             f"{info.get('industry', '')}  ·  Market Cap: {mc_str}"
         )
-        add_col, dismiss_col, _ = st.columns([1, 1, 4])
+
+        # Action buttons
+        add_col, dismiss_col = st.columns([1, 1])
         with add_col:
-            if st.button(f"Add {t} to watchlist", type="primary"):
+            if st.button(f"Add {t} to watchlist", type="primary", use_container_width=True):
                 _save_custom_stock(t, info.get("name", t))
                 del st.session_state["search_result"]
                 st.session_state["pending_select"] = t
                 st.rerun()
         with dismiss_col:
-            if st.button("Dismiss"):
+            if st.button("Dismiss", use_container_width=True):
                 del st.session_state["search_result"]
                 st.rerun()
+
+        # Show stock details immediately after search
+        st.divider()
+        st.markdown(f"### {info.get('name', t)} ({t})")
+        render_single_stock(t)
 
     st.divider()
     render_single_stock(selected_ticker)
