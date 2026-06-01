@@ -25,6 +25,7 @@ from src.stock_fetcher import (fetch_stock_info, fetch_stock_price, fetch_stock_
 from src.news_fetcher import deduplicate_by_similarity
 from src.news_analyzer import get_groq_client, groq_key_configured
 from src.news_pipeline import run_pipeline, needs_run
+from src.earnings_tracker import get_earnings_calendar, format_earnings_for_display
 
 DB_PATH           = os.path.join(os.path.dirname(__file__), "..", "data", "econ_data.db")
 CUSTOM_STOCKS_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "custom_stocks.json")
@@ -1224,6 +1225,13 @@ def render_stock_tracing() -> None:
     with col_btn:
         st.write("")
         search_clicked = st.button("Search", type="primary", use_container_width=True)
+
+    # ── Earnings Calendar ─────────────────────────────────────────────────────
+    with st.expander("📅 Earnings Calendar", expanded=False):
+        earnings_cal = get_earnings_calendar(tickers)
+        calendar_text = format_earnings_for_display(earnings_cal)
+        st.markdown(calendar_text)
+        st.caption("*Auto-updates after earnings releases at 9:30 AM & 6:00 PM ET*")
 
     # ── Search logic ──────────────────────────────────────────────────────────
     if search_clicked and search_input:
