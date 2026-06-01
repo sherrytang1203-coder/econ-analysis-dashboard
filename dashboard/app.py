@@ -872,11 +872,6 @@ def _get_forecast_html_block(fcf_forecast: dict) -> str:
     try:
         pdf_url = fcf_forecast.get("pdf_url", "")
         pdf_name = pdf_url.split("/")[-1] if pdf_url else ""
-        is_official = fcf_forecast.get("confidence") == "Official"
-
-        source_line = ""
-        if is_official and pdf_name:
-            source_line = f'<div style="font-size:0.7em; opacity:0.5; margin-top:2px">(sourced from {pdf_name})</div>'
 
         fcf_yield = fcf_forecast.get("fcf_yield_2026", 0)
         fcf_2026 = fcf_forecast.get("fcf_2026", 0)
@@ -884,17 +879,17 @@ def _get_forecast_html_block(fcf_forecast: dict) -> str:
         confidence = fcf_forecast.get("confidence", "Unknown")
         eps_growth = fcf_forecast.get("eps_growth_rate", 0)
 
-        # Source attribution - clickable link to PDF
-        source_attr = ""
-        if pdf_url and pdf_name:
-            source_attr = f'<a href="{pdf_url}" target="_blank" style="font-size:0.65em; opacity:0.7; color:#0066cc; text-decoration:underline; display:block; margin-top:3px">📋 {pdf_name}</a>'
+        # Source attribution - clickable link under EPS 2026F
+        eps_source = ""
+        if eps_2026 and pdf_url and pdf_name:
+            eps_source = f'<a href="{pdf_url}" target="_blank" style="font-size:0.65em; opacity:0.7; color:#0066cc; text-decoration:underline; display:block; margin-top:3px">📋 Source: {pdf_name}</a>'
 
         # EPS 2026 section (if available)
         eps_section = ""
         if eps_2026:
-            eps_section = f'<div class="mitem"><div class="mlabel">EPS 2026F</div><div class="mval">${eps_2026:.2f}</div></div>'
+            eps_section = f'<div class="mitem"><div class="mlabel">EPS 2026F</div><div class="mval">${eps_2026:.2f}</div>{eps_source}</div>'
 
-        return f'<div class="mpair" style="margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.1)"><div class="mitem"><div class="mlabel">FCF 2026F</div><div class="mval">${fcf_2026:.2f}B</div>{source_attr}</div>{eps_section}<div class="mitem"><div class="mlabel">FCF Yield 2026F</div><div class="mval">{fcf_yield:.1f}%</div></div><div class="mitem"><div class="mlabel" style="font-size:0.85em">Confidence: {confidence}</div><div class="mval" style="font-size:0.9em; opacity:0.8">EPS Growth: {eps_growth:.1f}%</div></div></div>'
+        return f'<div class="mpair" style="margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.1)"><div class="mitem"><div class="mlabel">FCF 2026F</div><div class="mval">${fcf_2026:.2f}B</div></div>{eps_section}<div class="mitem"><div class="mlabel">FCF Yield 2026F</div><div class="mval">{fcf_yield:.1f}%</div></div><div class="mitem"><div class="mlabel" style="font-size:0.85em">Confidence: {confidence}</div><div class="mval" style="font-size:0.9em; opacity:0.8">EPS Growth: {eps_growth:.1f}%</div></div></div>'
     except Exception as e:
         return f"<div style='color:red;'>Error rendering forecast: {str(e)}</div>"
 
