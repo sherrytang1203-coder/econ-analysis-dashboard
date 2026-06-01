@@ -172,13 +172,54 @@ st.markdown("""
 }
 </style>
 <script>
-// Prevent keyboard from appearing on chart taps
+// Long press tooltip handling for Plotly charts
+let longPressTimer = null;
+let lastTouchX = 0;
+let lastTouchY = 0;
+let currentPlotDiv = null;
+
 document.addEventListener('touchstart', (e) => {
-  if (e.target.closest('.js-plotly-plot') || e.target.closest('svg.main-svg')) {
+  const plotDiv = e.target.closest('.js-plotly-plot');
+  if (plotDiv) {
+    currentPlotDiv = plotDiv;
+    lastTouchX = e.touches[0].clientX;
+    lastTouchY = e.touches[0].clientY;
+
+    // Start long press timer (2 seconds)
+    longPressTimer = setTimeout(() => {
+      // Show tooltip on long press
+      if (currentPlotDiv && currentPlotDiv._fullData) {
+        const rect = currentPlotDiv.getBoundingClientRect();
+        const relX = lastTouchX - rect.left;
+        const relY = lastTouchY - rect.top;
+
+        // Find closest point and show hover
+        Plotly.Fx.hover(currentPlotDiv, [{
+          xval: currentPlotDiv.layout.xaxis.d2l(relX),
+          yval: currentPlotDiv.layout.yaxis.d2l(relY)
+        }]);
+      }
+    }, 2000);
+
+    // Blur any focused element
     e.target.blur();
     if (document.activeElement) {
       document.activeElement.blur();
     }
+  }
+}, false);
+
+document.addEventListener('touchend', (e) => {
+  // Clear long press timer if touch ends before 2 seconds
+  if (longPressTimer) {
+    clearTimeout(longPressTimer);
+    longPressTimer = null;
+  }
+
+  // Hide tooltip when releasing
+  if (currentPlotDiv) {
+    Plotly.Fx.unhover(currentPlotDiv);
+    currentPlotDiv = null;
   }
 }, false);
 
@@ -509,7 +550,7 @@ def _pro_layout(title: str, y_title: str, height: int = 300) -> dict:
         paper_bgcolor="rgba(0,0,0,0)",
         height=height,
         margin=dict(l=58, r=24, t=50, b=40),
-        hovermode="x unified",
+        hovermode=False,
         showlegend=False,
         dragmode=False,
         hoverlabel=dict(bgcolor="white", bordercolor="#e5e7eb",
