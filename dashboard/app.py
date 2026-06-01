@@ -109,6 +109,14 @@ st.markdown("""
         margin: 0 !important;
         padding: 0 !important;
         border: none !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+    }
+
+    /* Remove borders from all elements */
+    div[class*="stContainer"] {
+        border: none !important;
+        border-radius: 0 !important;
     }
 
     /* Remove all vertical spacing */
