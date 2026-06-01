@@ -1127,7 +1127,7 @@ def _stock_metric_cards(info: dict, fcf_yield, curr_rsi_d, curr_rsi_w, fcf_forec
       </div>
       <div class="mitem">
         <div class="mlabel">52-Week Range</div>
-        <div class="mval-sm">${lo:.0f}&nbsp;–&nbsp;${hi:.0f}</div>
+        <div class="mval-sm">{f'${lo:.0f}&nbsp;–&nbsp;${hi:.0f}' if lo and hi else 'N/A'}</div>
       </div>
     </div>
   </div>
