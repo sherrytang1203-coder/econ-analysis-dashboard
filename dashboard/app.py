@@ -868,25 +868,28 @@ def _get_forecast_html_block(fcf_forecast: dict) -> str:
     if not fcf_forecast:
         return ""
 
-    pdf_url = fcf_forecast.get("pdf_url", "")
-    pdf_name = pdf_url.split("/")[-1] if pdf_url else ""
-    is_official = fcf_forecast.get("confidence") == "Official"
+    try:
+        pdf_url = fcf_forecast.get("pdf_url", "")
+        pdf_name = pdf_url.split("/")[-1] if pdf_url else ""
+        is_official = fcf_forecast.get("confidence") == "Official"
 
-    source_line = ""
-    if is_official and pdf_name:
-        source_line = f'<div style="font-size:0.7em; opacity:0.5; margin-top:2px">(sourced from {pdf_name})</div>'
+        source_line = ""
+        if is_official and pdf_name:
+            source_line = f'<div style="font-size:0.7em; opacity:0.5; margin-top:2px">(sourced from {pdf_name})</div>'
 
-    return f'''<div class="mpair" style="margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.1)">
-      <div class="mitem">
-        <div class="mlabel">FCF Yield 2026F</div>
-        <div class="mval">{fcf_forecast['fcf_yield_2026']:.1f}%</div>
-        {source_line}
-      </div>
-      <div class="mitem">
-        <div class="mlabel" style="font-size:0.85em">Confidence: {fcf_forecast['confidence']}</div>
-        <div class="mval" style="font-size:0.9em; opacity:0.8">EPS Growth: {fcf_forecast['eps_growth_rate']:.1f}%</div>
-      </div>
-    </div>'''
+        fcf_yield = fcf_forecast.get("fcf_yield_2026", 0)
+        fcf_2026 = fcf_forecast.get("fcf_2026", 0)
+        confidence = fcf_forecast.get("confidence", "Unknown")
+        eps_growth = fcf_forecast.get("eps_growth_rate", 0)
+
+        # Source attribution for official guidance
+        source_attr = ""
+        if is_official and pdf_name:
+            source_attr = f'<div style="font-size:0.65em; opacity:0.6; margin-top:3px; color:#999">📋 Source: {pdf_name}</div>'
+
+        return f'<div class="mpair" style="margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.1)"><div class="mitem"><div class="mlabel">FCF 2026F</div><div class="mval">${fcf_2026:.2f}B</div>{source_attr}</div><div class="mitem"><div class="mlabel">FCF Yield 2026F</div><div class="mval">{fcf_yield:.1f}%</div></div><div class="mitem"><div class="mlabel" style="font-size:0.85em">Confidence: {confidence}</div><div class="mval" style="font-size:0.9em; opacity:0.8">EPS Growth: {eps_growth:.1f}%</div></div></div>'
+    except Exception as e:
+        return f"<div style='color:red;'>Error rendering forecast: {str(e)}</div>"
 
 
 def _stock_metric_cards(info: dict, fcf_yield, curr_rsi_d, curr_rsi_w, fcf_forecast=None) -> None:
