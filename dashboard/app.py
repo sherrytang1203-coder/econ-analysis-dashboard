@@ -177,15 +177,37 @@ st.markdown("""
 }
 </style>
 <script>
-// Prevent keyboard from appearing and prevent focus on charts
+// Prevent dragging on charts
+let touchStartX = 0;
+let touchStartY = 0;
+
 document.addEventListener('touchstart', (e) => {
-  if (e.target.closest('.js-plotly-plot') || e.target.closest('svg.main-svg')) {
+  const plotDiv = e.target.closest('.js-plotly-plot');
+  if (plotDiv) {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+
+    // Blur any focused element
     e.target.blur();
     if (document.activeElement) {
       document.activeElement.blur();
     }
   }
 }, false);
+
+document.addEventListener('touchmove', (e) => {
+  const plotDiv = e.target.closest('.js-plotly-plot');
+  if (plotDiv) {
+    // Calculate movement
+    const moveX = Math.abs(e.touches[0].clientX - touchStartX);
+    const moveY = Math.abs(e.touches[0].clientY - touchStartY);
+
+    // If moving more than 5px horizontally or vertically in chart, prevent default
+    if (moveX > 5 || moveY > 5) {
+      e.preventDefault();
+    }
+  }
+}, { passive: false });
 
 // Prevent focus on Plotly elements
 document.addEventListener('focus', (e) => {
