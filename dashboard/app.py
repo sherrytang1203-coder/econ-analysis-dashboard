@@ -694,7 +694,12 @@ def render_capital_markets():
                     hist_df, f"{sector_name} ({clicked_ticker})", "Price (USD)",
                     x_col="date", y_col="close", color="#5C6BC0",
                 )
-                st.plotly_chart(fig5, use_container_width=True, config={"displayModeBar": False})
+                st.plotly_chart(fig5, use_container_width=True, config={
+            "displayModeBar": False,
+            "scrollZoom": False,
+            "doubleClick": False,
+            "draggable": False
+        })
             else:
                 st.warning(f"Could not load 5-year data for {sector_name}.")
         else:
@@ -787,7 +792,12 @@ def render_market_leading_charts():
         )
         combined_yc = pd.concat([df10, df2]).dropna(subset=["value"])
         _apply_range_buttons(fig_yc, combined_yc, "date", "value")
-        st.plotly_chart(fig_yc, use_container_width=True, config={"displayModeBar": False})
+        st.plotly_chart(fig_yc, use_container_width=True, config={
+        "displayModeBar": False,
+        "scrollZoom": False,
+        "doubleClick": False,
+        "draggable": False
+    })
 
     with c4:
         if not df10.empty and not df2.empty:
@@ -809,7 +819,12 @@ def render_market_leading_charts():
                 showlegend=False,
             )
             _apply_range_buttons(fig_sp, spread, "date", "value")
-            st.plotly_chart(fig_sp, use_container_width=True, config={"displayModeBar": False})
+            st.plotly_chart(fig_sp, use_container_width=True, config={
+            "displayModeBar": False,
+            "scrollZoom": False,
+            "doubleClick": False,
+            "draggable": False
+        })
         else:
             st.info("Sync FRED data to see the yield spread chart.")
 
@@ -1380,12 +1395,19 @@ def render_single_stock(ticker: str) -> None:
         ("All", None),
     ]
     _apply_range_buttons(fig_price, price_df, "date", "close", timeframes=timeframes)
-    st.plotly_chart(fig_price, use_container_width=True, config={"displayModeBar": False})
+    st.plotly_chart(fig_price, use_container_width=True, config={
+        "displayModeBar": False,
+        "scrollZoom": False,
+        "doubleClick": False,
+        "draggable": False
+    })
 
     with st.container(border=False):
         st.plotly_chart(_rsi_chart(rsi_daily, rsi_weekly), use_container_width=True, config={
             "displayModeBar": False,
-            "responsive": True
+            "scrollZoom": False,
+            "doubleClick": False,
+            "draggable": False
         })
 
     # ── Fundamentals ─────────────────────────────────────────────────────────
@@ -1439,7 +1461,12 @@ def render_single_stock(ticker: str) -> None:
                                categoryarray=all_year_strs, gridcolor="#f3f4f6",
                                tickfont=dict(size=11, color="#9ca3af"), showline=False),
                 )
-                st.plotly_chart(fig_pe, use_container_width=True, config={"displayModeBar": False})
+                st.plotly_chart(fig_pe, use_container_width=True, config={
+                    "displayModeBar": False,
+                    "scrollZoom": False,
+                    "doubleClick": False,
+                    "draggable": False
+                })
                 if loss_years:
                     st.caption(f"✕ Loss year(s): {', '.join(str(y) for y in sorted(loss_years))}")
             else:
@@ -1462,7 +1489,12 @@ def render_single_stock(ticker: str) -> None:
                                tickfont=dict(size=11, color="#9ca3af"),
                                zeroline=False, showline=False),
                 )
-                st.plotly_chart(fig_rev, use_container_width=True, config={"displayModeBar": False})
+                st.plotly_chart(fig_rev, use_container_width=True, config={
+                    "displayModeBar": False,
+                    "scrollZoom": False,
+                    "doubleClick": False,
+                    "draggable": False
+                })
             else:
                 st.info("Revenue data unavailable.")
 
@@ -1518,7 +1550,12 @@ def render_single_stock(ticker: str) -> None:
                     showlegend=False,
                     dragmode=False,
                 )
-                st.plotly_chart(fig_fcf, use_container_width=True, config={"displayModeBar": False, "scrollZoom": False, "doubleClick": False, "box": False, "lasso": False, "select": False})
+                st.plotly_chart(fig_fcf, use_container_width=True, config={
+                    "displayModeBar": False,
+                    "scrollZoom": False,
+                    "doubleClick": False,
+                    "draggable": False
+                })
             else:
                 st.info("FCF Yield data unavailable.")
 
@@ -1545,7 +1582,12 @@ def render_single_stock(ticker: str) -> None:
                 showlegend=False,
                 dragmode=False,
             )
-            st.plotly_chart(fig_div, use_container_width=True, config={"displayModeBar": False, "scrollZoom": False, "doubleClick": False, "box": False, "lasso": False, "select": False})
+            st.plotly_chart(fig_div, use_container_width=True, config={
+                "displayModeBar": False,
+                "scrollZoom": False,
+                "doubleClick": False,
+                "draggable": False
+            })
 
 
 def render_stock_tracing() -> None:
