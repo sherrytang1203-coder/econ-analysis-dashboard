@@ -882,10 +882,10 @@ def _get_forecast_html_block(fcf_forecast: dict) -> str:
         confidence = fcf_forecast.get("confidence", "Unknown")
         eps_growth = fcf_forecast.get("eps_growth_rate", 0)
 
-        # Source attribution for official guidance
+        # Source attribution - clickable link to PDF
         source_attr = ""
-        if is_official and pdf_name:
-            source_attr = f'<div style="font-size:0.65em; opacity:0.6; margin-top:3px; color:#999">📋 Source: {pdf_name}</div>'
+        if pdf_url and pdf_name:
+            source_attr = f'<a href="{pdf_url}" target="_blank" style="font-size:0.65em; opacity:0.7; color:#0066cc; text-decoration:underline; display:block; margin-top:3px">📋 {pdf_name}</a>'
 
         return f'<div class="mpair" style="margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.1)"><div class="mitem"><div class="mlabel">FCF 2026F</div><div class="mval">${fcf_2026:.2f}B</div>{source_attr}</div><div class="mitem"><div class="mlabel">FCF Yield 2026F</div><div class="mval">{fcf_yield:.1f}%</div></div><div class="mitem"><div class="mlabel" style="font-size:0.85em">Confidence: {confidence}</div><div class="mval" style="font-size:0.9em; opacity:0.8">EPS Growth: {eps_growth:.1f}%</div></div></div>'
     except Exception as e:
