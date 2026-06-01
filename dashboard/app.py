@@ -110,15 +110,6 @@ st.markdown("""
         -webkit-tap-highlight-color: transparent !important;
     }
 
-    /* Hide hover labels by default, show on long press */
-    .hoverlayer {
-        opacity: 0 !important;
-        pointer-events: none !important;
-    }
-    .hoverlayer.show-tooltip {
-        opacity: 1 !important;
-        pointer-events: auto !important;
-    }
 
     /* Make plotly containers full width, no margins */
     div[data-testid="stPlotlyChart"] {
@@ -182,74 +173,13 @@ st.markdown("""
 }
 </style>
 <script>
-// Long press tooltip handling for Plotly charts
-let longPressTimer = null;
-let currentPlotDiv = null;
-let isLongPressed = false;
-let startX = 0;
-let startY = 0;
-
+// Prevent keyboard from appearing and prevent focus on charts
 document.addEventListener('touchstart', (e) => {
-  const plotDiv = e.target.closest('.js-plotly-plot');
-  if (plotDiv) {
-    currentPlotDiv = plotDiv;
-    isLongPressed = false;
-    startX = e.touches[0].clientX;
-    startY = e.touches[0].clientY;
-
-    // Start long press timer (2 seconds)
-    longPressTimer = setTimeout(() => {
-      isLongPressed = true;
-      // Show tooltip by adding class to hoverlayer
-      const hoverlayer = plotDiv.querySelector('.hoverlayer');
-      if (hoverlayer) {
-        console.log('Showing tooltip');
-        hoverlayer.classList.add('show-tooltip');
-      }
-      // Also trigger Plotly hover
-      if (plotDiv.data && plotDiv.data.length > 0) {
-        Plotly.Fx.hover(plotDiv);
-      }
-    }, 2000);
-
-    // Blur any focused element
+  if (e.target.closest('.js-plotly-plot') || e.target.closest('svg.main-svg')) {
     e.target.blur();
     if (document.activeElement) {
       document.activeElement.blur();
     }
-  }
-}, false);
-
-document.addEventListener('touchmove', (e) => {
-  // Cancel long press if user moves finger more than 10px (dragging)
-  if (longPressTimer && !isLongPressed) {
-    const moveX = Math.abs(e.touches[0].clientX - startX);
-    const moveY = Math.abs(e.touches[0].clientY - startY);
-    if (moveX > 10 || moveY > 10) {
-      clearTimeout(longPressTimer);
-      longPressTimer = null;
-    }
-  }
-}, false);
-
-document.addEventListener('touchend', (e) => {
-  // Clear long press timer if touch ends before 2 seconds
-  if (longPressTimer) {
-    clearTimeout(longPressTimer);
-    longPressTimer = null;
-  }
-
-  // Hide tooltip when releasing
-  if (currentPlotDiv) {
-    const hoverlayer = currentPlotDiv.querySelector('.hoverlayer');
-    if (hoverlayer) {
-      console.log('Hiding tooltip');
-      hoverlayer.classList.remove('show-tooltip');
-    }
-    // Hide Plotly hover
-    Plotly.Fx.unhover(currentPlotDiv);
-    currentPlotDiv = null;
-    isLongPressed = false;
   }
 }, false);
 
@@ -580,11 +510,9 @@ def _pro_layout(title: str, y_title: str, height: int = 300) -> dict:
         paper_bgcolor="rgba(0,0,0,0)",
         height=height,
         margin=dict(l=58, r=24, t=50, b=40),
-        hovermode="x unified",
+        hovermode=False,
         showlegend=False,
         dragmode=False,
-        hoverlabel=dict(bgcolor="white", bordercolor="#e5e7eb",
-                        font=dict(size=12, color="#111827")),
     )
 
 
