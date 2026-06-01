@@ -121,98 +121,142 @@ The 2026 FCF Yield forecast uses a **hybrid approach** combining historical anal
 
 Typically ±1-2% of actual realized yield for stable, mature companies. Less accurate for high-growth or volatile companies.
 
-## Guidance Extraction System
+## Guidance & Forecast System
 
-**Location:** `src/guidance_manager.py`, `src/ir_scrapers.py`, `scripts/discover_presentations.py`
+**Location:** `src/guidance_manager.py`, `src/stock_fetcher.py`, `data/guidance_forecasts.json`, `data/guidance_history.csv`
 
 ### Overview
 
-The guidance system allows you to extract **official FCF and EPS forecasts** from company investor relations presentations (PDF earnings calls, earnings announcements) and automatically use them to override calculated forecasts.
+The system stores **official EPS and FCF forecasts** for all 14 tracked stocks and displays them with clickable source attribution on the dashboard.
 
-### How It Works
+### Current Guidance Status (14 Companies)
 
-1. **Extract PDF Text** - `extract_fcf_from_pdf(pdf_url)` downloads and extracts text from earnings presentations
-2. **Find Guidance Numbers** - Searches for keywords like "FCF guidance", "forecast", "2026", etc.
-3. **Store Guidance** - `guidance_manager.py` stores official numbers in `data/guidance_forecasts.json`
-4. **Auto-Apply** - When `fetch_fcf_yield_forecast_2026()` is called, it checks for stored guidance first
-
-### Usage
-
-**Option 1: Discover and store automatically**
-```bash
-python scripts/discover_presentations.py --discover
-```
-
-This finds known presentations (currently OTIS), extracts guidance, and stores it.
-
-**Option 2: Add presentations manually**
-```bash
-python scripts/discover_presentations.py --add-manual "https://s203.q4cdn.com/.../1Q26-Otis-Earnings-Webcast.pdf"
-```
-
-The script will:
-- Download the PDF
-- Extract FCF-related text
-- Show you the extracted sections
-- Prompt you to enter the guidance amount (e.g., `1.65` for $1.65B)
-- Store it automatically
-
-**Option 3: Programmatic**
-```python
-from src.guidance_manager import add_forecast
-
-# Store official guidance
-add_forecast(
-    ticker="OTIS",
-    year=2026,
-    fcf_billions=1.625,  # Midpoint of $1.6B - $1.65B guidance
-    source="Q1 2026 Earnings Webcast (2026-05-02)",
-    pdf_url="https://..."
-)
-
-# Forecast will now use this guidance automatically
-from src.stock_fetcher import fetch_fcf_yield_forecast_2026
-forecast = fetch_fcf_yield_forecast_2026("OTIS")
-# Returns: {"confidence": "Official", "source": "Company guidance", ...}
-```
-
-### Finding Presentations
-
-1. Navigate to company investor relations site (e.g., https://www.otisinvestors.com/)
-2. Look for "Events & Presentations" or "Past Events"
-3. Many sites use JavaScript to load content dynamically — you may need to:
-   - Inspect Network tab (F12 → Network) to find PDF download URLs
-   - Or manually right-click → Save presentation as
-4. Copy the direct PDF URL and use `--add-manual`
+| Ticker | EPS 2026F | FCF 2026F | Source | Confidence |
+|--------|-----------|-----------|--------|------------|
+| OTIS | $4.22 | $1.625B | PDF | Official |
+| COF | $19.27 | Calculated | SEC Filing | High |
+| MU | $58.05 | Calculated | TipRanks | Medium |
+| GOOGL | $14.22 | Calculated | SEC 10-Q | High |
+| MKL | $113.57 | Calculated | IR Site | High |
+| DEO | $1.67 | Calculated | Form 6-K | High |
+| BAM | — | Calculated | Press Release | High |
+| BN | $0.66 | Calculated | SEC Filing | Medium |
+| PM | $8.44 | Calculated | 8-K Filing | High |
+| ULTA | $28.30 | Calculated | Earnings Release | High |
+| MO | $5.64 | Calculated | Press Release | High |
+| PYPL | $5.22 | Calculated | Earnings Release | High |
+| MRSH | $10.34 | Calculated | Earnings Release | High |
+| JRVR | $0.42 | Calculated | IR Site | Medium |
 
 ### Storage Format
 
-Guidance is stored in `data/guidance_forecasts.json`:
+**Guidance:**
 ```json
 {
   "OTIS": {
     "2026": {
       "fcf_billions": 1.625,
-      "eps_dollars": null,
-      "source": "Q1 2026 Earnings Webcast (2026-05-02)",
-      "pdf_url": "https://..."
+      "eps_dollars": 4.22,
+      "source": "IR Presentation (1Q26-Otis-Earnings-Webcast.pdf)",
+      "pdf_url": "https://s203.q4cdn.com/.../1Q26-Otis-Earnings-Webcast.pdf"
+    }
+  },
+  "COF": {
+    "2026": {
+      "fcf_billions": null,
+      "eps_dollars": 19.27,
+      "source": "Capital One Q1 2026 earnings guidance",
+      "pdf_url": "https://www.sec.gov/Archives/.../ex991q12026earningsrelease.htm"
     }
   }
 }
 ```
 
+**History Audit Trail:** `data/guidance_history.csv` logs all guidance with snap_date, useful for tracking changes over time.
+
+### Dashboard Display
+
+The stock tab displays:
+```
+EPS 2026F: $X.XX
+📋 Source: [filename or Company Source] (clickable link)
+
+FCF 2026F: $X.XXB (official or calculated)
+FCF Yield 2026F: X.X%
+Confidence: Official/High/Medium
+EPS Growth: X.X%
+```
+
+- Source links are **clickable** and open in new tab
+- FCF values shown even if negative (realistic for some companies)
+- OTIS shows official FCF; others show calculated values
+- All 14 companies display EPS guidance with attribution
+
+### Programmatic API
+
+```python
+from src.guidance_manager import add_forecast, get_forecast
+from src.stock_fetcher import fetch_fcf_yield_forecast_2026
+
+# Add new guidance
+add_forecast(
+    ticker="OTIS",
+    year=2026,
+    fcf_billions=1.625,
+    eps_dollars=4.22,
+    source="Q1 2026 Earnings Webcast",
+    pdf_url="https://..."
+)
+
+# Retrieve guidance
+guidance = get_forecast("OTIS", 2026)
+# Returns: {"fcf_billions": 1.625, "eps_dollars": 4.22, ...}
+
+# Get forecast (checks guidance first, then calculates)
+forecast = fetch_fcf_yield_forecast_2026("OTIS")
+# Returns: {"fcf_yield_2026": 1.4, "eps_2026": 4.22, "confidence": "Official", ...}
+```
+
 ### Priority Order
 
 When calling `fetch_fcf_yield_forecast_2026(ticker)`:
-1. If `fcf_guidance_billions` parameter provided → use it
-2. If stored guidance exists → use it (confidence: "Official")
-3. Otherwise → calculate from historical data (confidence: "High"/"Medium")
+1. If FCF guidance exists → use official path (confidence: "Official")
+2. Else if EPS guidance exists → return with EPS displayed, FCF calculated or = 0
+3. Else → calculate both from historical data (confidence: "High"/"Medium")
 
 ### Limitations
 
-- PDF extraction is text-only; complex tables may not extract cleanly
-- Guidance is manual — requires you to identify and enter the numbers
-- Works best with plain-English guidance like "$1.6B to 1.65B FCF guidance"
+- EPS guidance from various public sources, not always official company guidance
+- FCF guidance only available for OTIS currently
+- Calculated FCF can be 0 or negative if company has deteriorating cash flow
+
+## Earnings Tracker System
+
+**Location:** `src/earnings_tracker.py`
+
+### Functions
+
+- `get_earnings_dates(ticker)` — Returns list of recent/upcoming earnings dates
+- `get_next_earnings(ticker)` — Next upcoming earnings date
+- `get_last_earnings(ticker)` — Most recent earnings date
+- `should_update_guidance_now(ticker)` — Boolean check if earnings were released today/yesterday
+- `get_earnings_calendar(tickers)` — Returns calendar dict with next_earnings, last_earnings, days_until
+- `format_earnings_for_display(calendar)` — Formats calendar for dashboard display with status indicators
+
+### Dashboard Display
+
+The stock tab shows an earnings calendar expander:
+```
+📅 Earnings Calendar
+- OTIS: 🔴 Recent (2026-05-15)
+- COF: 🟡 12d away (2026-06-02)
+- GOOGL: ⚪ 35d away (2026-06-27)
+```
+
+Status indicators:
+- 🔴 = Earnings today or yesterday
+- 🟡 = 7-30 days away
+- ⚪ = 30+ days away
 
 ## Debug log
 
@@ -229,3 +273,44 @@ When calling `fetch_fcf_yield_forecast_2026(ticker)`:
 4. `Store()` is now instantiated at module level in `app.py` without session state or `@st.cache_resource` caching — both caused stale instances to persist across deployments.
 
 **Lesson:** When Streamlit is started with `run_in_background`, Ctrl+C in the terminal only kills the foreground process. Background processes continue serving the old code. Always kill all Python processes explicitly (`Get-Process python* | Stop-Process -Force`) before restarting.
+
+### EPS 2026F Not Displaying for JRVR and MU (2026-05-31)
+
+**Symptom:** Dashboard shows "None" for JRVR and MU EPS 2026F values even though guidance_forecasts.json contains correct data ($0.42 and $58.05).
+
+**Root cause:** The forecast function checked for FCF guidance first and only returned the official guidance path if FCF existed. For companies with EPS-only guidance (no FCF), the code fell through to the calculated path but an early return blocked it, returning None instead of EPS data. Additionally, the `stored_guidance` variable was scoped locally and not available in the calculated path exception handler.
+
+**Fix applied:**
+1. Moved `stored_guidance` loading outside the FCF guidance check so it's available for both paths.
+2. Added fallback exception handler that returns EPS-only forecast if calculation fails.
+3. Guaranteed return with EPS data when guidance exists, even if FCF can't be calculated.
+
+**Result:** All 14 companies now display EPS 2026F with source links, calculated or official FCF values.
+
+### FCF Forecast = $0B for Most Companies (2026-05-31)
+
+**Symptom:** Dashboard showed FCF 2026F = $0B for 12 companies instead of calculated values.
+
+**Root cause:** The early return for EPS-only guidance was blocking the calculated FCF path entirely. Even companies that should have had FCF calculated were returning minimal EPS-only forecasts with fcf_2026 = 0.
+
+**Fix applied:**
+1. Removed the early return for EPS-only guidance.
+2. Let the code flow through to the calculated path for all companies without official FCF guidance.
+3. Modified the calculated path to handle negative/zero FCF values instead of returning None.
+4. Only return None as absolute last resort.
+
+**Result:** COF shows $31.35B, GOOGL $79.34B, PYPL $5.98B, etc. Only JRVR, MU, BN show $0B (due to negative historical FCF, which is realistic for some companies).
+
+### Source Links Not Showing on Dashboard (2026-05-31)
+
+**Symptom:** Guidance data was in guidance_forecasts.json but source links (PDF URLs) were not appearing on dashboard.
+
+**Root cause:** The HTML rendering checked if `pdf_name` could be extracted from URL, but many non-PDF URLs (like IR homepages) had empty or domain-only names, failing the condition `if pdf_url and pdf_name`.
+
+**Fix applied:**
+1. Improved URL parsing to handle different formats (direct PDFs, IR website URLs, SEC filings).
+2. Default to "Company Source" label when filename can't be extracted.
+3. Show source link for both FCF (if official guidance) and EPS (always when exists).
+4. Made links clickable and opening in new tabs.
+
+**Result:** All 14 companies now display source attribution with working links to PDF/SEC/IR source documents.
