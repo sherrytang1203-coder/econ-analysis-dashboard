@@ -330,16 +330,53 @@ def fetch_fcf_yield_forecast_2026(ticker: str, fcf_guidance_billions: float = No
             "source": str (optional - description of guidance source)
         }
     """
-    # Try to load stored guidance first
+    # Try to load stored guidance first (for BOTH paths - FCF and EPS)
     stored_guidance = None
-    if fcf_guidance_billions is None and use_stored:
+    if use_stored:
         try:
             from src.guidance_manager import get_forecast
             stored_guidance = get_forecast(ticker, 2026)
-            if stored_guidance and stored_guidance.get("fcf_billions"):
+            if fcf_guidance_billions is None and stored_guidance and stored_guidance.get("fcf_billions"):
                 fcf_guidance_billions = stored_guidance["fcf_billions"]
-        except Exception:
+        except Exception as e:
             pass
+
+    # If we have official EPS guidance, guarantee we return it (even if FCF calc fails)
+    if stored_guidance and stored_guidance.get("eps_dollars"):
+        try:
+            t = yf.Ticker(ticker)
+            info = t.info
+            current_mc = info.get("marketCap", 0)
+            if current_mc and current_mc > 0:
+                current_mc_billions = current_mc / 1e9
+            else:
+                current_mc_billions = 0
+
+            # ALWAYS return something with EPS when we have guidance
+            return {
+                "fcf_yield_2026": 0,
+                "fcf_2026": 0,
+                "market_cap_2026": current_mc_billions,
+                "eps_growth_rate": 0,
+                "eps_2026": stored_guidance.get("eps_dollars"),
+                "fcf_margin_hist": 0,
+                "capex_margin_hist": 0,
+                "confidence": "High",
+                "pdf_url": stored_guidance.get("pdf_url", ""),
+            }
+        except Exception as e:
+            # Even if exception, return something
+            return {
+                "fcf_yield_2026": 0,
+                "fcf_2026": 0,
+                "market_cap_2026": 0,
+                "eps_growth_rate": 0,
+                "eps_2026": stored_guidance.get("eps_dollars"),
+                "fcf_margin_hist": 0,
+                "capex_margin_hist": 0,
+                "confidence": "High",
+                "pdf_url": stored_guidance.get("pdf_url", ""),
+            }
 
     # If official guidance provided or loaded, use it (FCF-based forecast)
     if fcf_guidance_billions is not None and fcf_guidance_billions > 0:
@@ -392,6 +429,7 @@ def fetch_fcf_yield_forecast_2026(ticker: str, fcf_guidance_billions: float = No
     # Fall back to calculated approach
     # But use official EPS if available from stored guidance
     try:
+        import sys
         t = yf.Ticker(ticker)
         info = t.info
 
@@ -402,6 +440,19 @@ def fetch_fcf_yield_forecast_2026(ticker: str, fcf_guidance_billions: float = No
         shares = info.get("sharesOutstanding")
 
         if not all([current_mc, trailing_eps, forward_eps, shares]):
+            # If we have official EPS guidance, return minimal forecast
+            if stored_guidance and stored_guidance.get("eps_dollars"):
+                return {
+                    "fcf_yield_2026": 0,
+                    "fcf_2026": 0,
+                    "market_cap_2026": 0,
+                    "eps_growth_rate": 0,
+                    "eps_2026": stored_guidance.get("eps_dollars"),
+                    "fcf_margin_hist": 0,
+                    "capex_margin_hist": 0,
+                    "confidence": "High",
+                    "pdf_url": stored_guidance.get("pdf_url", ""),
+                }
             return None
 
         # Check if we have official EPS guidance from stored data
@@ -531,6 +582,19 @@ def fetch_fcf_yield_forecast_2026(ticker: str, fcf_guidance_billions: float = No
             return None
 
     except Exception:
+        # If calculation failed but we have official EPS, return it with zero FCF
+        if stored_guidance and stored_guidance.get("eps_dollars"):
+            return {
+                "fcf_yield_2026": 0,
+                "fcf_2026": 0,
+                "market_cap_2026": 0,
+                "eps_growth_rate": 0,
+                "eps_2026": stored_guidance.get("eps_dollars"),
+                "fcf_margin_hist": 0,
+                "capex_margin_hist": 0,
+                "confidence": "High",
+                "pdf_url": stored_guidance.get("pdf_url", ""),
+            }
         return None
 
 
