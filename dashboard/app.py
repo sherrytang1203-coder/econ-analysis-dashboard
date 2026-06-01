@@ -871,7 +871,15 @@ def _get_forecast_html_block(fcf_forecast: dict) -> str:
 
     try:
         pdf_url = fcf_forecast.get("pdf_url", "")
-        pdf_name = pdf_url.split("/")[-1] if pdf_url else ""
+        pdf_name = ""
+
+        if pdf_url:
+            # Extract filename from URL
+            parts = pdf_url.rstrip("/").split("/")
+            pdf_name = parts[-1] if parts[-1] else parts[-2] if len(parts) > 1 else "Source"
+            # If just a domain, use domain name
+            if "." in pdf_name and len(pdf_name) < 10 and not pdf_name.endswith(".pdf"):
+                pdf_name = parts[-2] if len(parts) > 2 else "Source"
 
         fcf_yield = fcf_forecast.get("fcf_yield_2026", 0)
         fcf_2026 = fcf_forecast.get("fcf_2026", 0)
@@ -881,8 +889,9 @@ def _get_forecast_html_block(fcf_forecast: dict) -> str:
 
         # Source attribution - clickable link under EPS 2026F
         eps_source = ""
-        if eps_2026 and pdf_url and pdf_name:
-            eps_source = f'<a href="{pdf_url}" target="_blank" style="font-size:0.65em; opacity:0.7; color:#0066cc; text-decoration:underline; display:block; margin-top:3px">📋 Source: {pdf_name}</a>'
+        if eps_2026 and pdf_url:
+            source_label = pdf_name if pdf_name and pdf_name != "Source" else "Company Source"
+            eps_source = f'<a href="{pdf_url}" target="_blank" style="font-size:0.65em; opacity:0.7; color:#0066cc; text-decoration:underline; display:block; margin-top:3px">📋 Source: {source_label}</a>'
 
         # EPS 2026 section (if available)
         eps_section = ""
