@@ -39,9 +39,10 @@ st.set_page_config(
 st.markdown("""
 <style>
 @media (max-width: 768px) {
-    /* Reduce main container padding */
+    /* Remove all padding on mobile for full-width charts */
     .main .block-container {
-        padding: 0.75rem 0.5rem !important;
+        padding: 0 !important;
+        margin: 0 !important;
         max-width: 100% !important;
     }
 
@@ -74,17 +75,27 @@ st.markdown("""
     /* Shrink title */
     .stock-name  { font-size: 20px !important; }
 
-    /* Make charts wider and taller on mobile */
+    /* Make charts full width on mobile with no margins */
     .js-plotly-plot {
         width: 100vw !important;
         height: auto !important;
         max-height: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
 
-    /* Make plotly containers full width */
+    /* Make plotly containers full width, no margins */
     div[data-testid="stPlotlyChart"] {
         width: 100vw !important;
+        margin: 0 !important;
+        padding: 0 !important;
         margin-left: calc(-50vw + 50%) !important;
+    }
+
+    /* Remove container borders on mobile */
+    div[data-testid="stContainer"] {
+        margin: 0 !important;
+        padding: 0 !important;
     }
 
     /* Full-width selectbox and inputs */
