@@ -91,24 +91,15 @@ st.markdown("""
         padding: 0 !important;
     }
 
-    /* Force SVG to take full width and disable scrolling */
+    /* Force SVG to take full width */
     svg.main-svg {
         width: 100vw !important;
-        touch-action: none !important;
-        pointer-events: auto !important;
     }
 
-    /* Disable chart scrolling and panning on mobile */
+    /* Allow hover/tap tooltips but prevent scrolling */
     .js-plotly-plot {
-        touch-action: none !important;
         overflow: visible !important;
-    }
-
-    /* Disable scrolling on chart containers */
-    div[class*="plotly"] {
-        overflow: visible !important;
-        overflow-x: visible !important;
-        overflow-y: visible !important;
+        touch-action: pan-y !important;
     }
 
     /* Make plotly containers full width, no margins */
