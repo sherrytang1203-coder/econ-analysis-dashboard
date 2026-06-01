@@ -96,11 +96,17 @@ st.markdown("""
         width: 100% !important;
     }
 
-    /* Hover tooltips only, prevent keyboard */
+    /* Hover tooltips only, prevent keyboard and dragging */
     .js-plotly-plot {
-        touch-action: pan-y !important;
+        touch-action: none !important;
         outline: none !important;
         -webkit-tap-highlight-color: transparent !important;
+        user-select: none !important;
+    }
+
+    /* Allow normal page scrolling but prevent chart drag */
+    div[data-testid="stPlotlyChart"] {
+        touch-action: pan-y !important;
     }
 
     svg.main-svg {
