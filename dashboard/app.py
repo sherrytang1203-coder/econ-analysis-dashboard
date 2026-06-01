@@ -112,10 +112,12 @@ st.markdown("""
 
     /* Hide hover labels by default, show on long press */
     .hoverlayer {
-        display: none !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
     }
     .hoverlayer.show-tooltip {
-        display: block !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
     }
 
     /* Make plotly containers full width, no margins */
@@ -184,12 +186,16 @@ st.markdown("""
 let longPressTimer = null;
 let currentPlotDiv = null;
 let isLongPressed = false;
+let startX = 0;
+let startY = 0;
 
 document.addEventListener('touchstart', (e) => {
   const plotDiv = e.target.closest('.js-plotly-plot');
   if (plotDiv) {
     currentPlotDiv = plotDiv;
     isLongPressed = false;
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
 
     // Start long press timer (2 seconds)
     longPressTimer = setTimeout(() => {
@@ -197,7 +203,12 @@ document.addEventListener('touchstart', (e) => {
       // Show tooltip by adding class to hoverlayer
       const hoverlayer = plotDiv.querySelector('.hoverlayer');
       if (hoverlayer) {
+        console.log('Showing tooltip');
         hoverlayer.classList.add('show-tooltip');
+      }
+      // Also trigger Plotly hover
+      if (plotDiv.data && plotDiv.data.length > 0) {
+        Plotly.Fx.hover(plotDiv);
       }
     }, 2000);
 
@@ -210,10 +221,14 @@ document.addEventListener('touchstart', (e) => {
 }, false);
 
 document.addEventListener('touchmove', (e) => {
-  // Clear long press if user moves finger (dragging)
-  if (longPressTimer && isLongPressed === false) {
-    clearTimeout(longPressTimer);
-    longPressTimer = null;
+  // Cancel long press if user moves finger more than 10px (dragging)
+  if (longPressTimer && !isLongPressed) {
+    const moveX = Math.abs(e.touches[0].clientX - startX);
+    const moveY = Math.abs(e.touches[0].clientY - startY);
+    if (moveX > 10 || moveY > 10) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
   }
 }, false);
 
@@ -228,8 +243,11 @@ document.addEventListener('touchend', (e) => {
   if (currentPlotDiv) {
     const hoverlayer = currentPlotDiv.querySelector('.hoverlayer');
     if (hoverlayer) {
+      console.log('Hiding tooltip');
       hoverlayer.classList.remove('show-tooltip');
     }
+    // Hide Plotly hover
+    Plotly.Fx.unhover(currentPlotDiv);
     currentPlotDiv = null;
     isLongPressed = false;
   }
