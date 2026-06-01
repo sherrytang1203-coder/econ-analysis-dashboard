@@ -361,13 +361,15 @@ def fetch_fcf_yield_forecast_2026(ticker: str, fcf_guidance_billions: float = No
                 eps_growth = max(-0.5, min(0.5, eps_growth))  # Cap to [-50%, +50%]
                 eps_growth = eps_growth * 100  # Convert to percentage
 
-            # Get PDF URL from stored guidance if available
+            # Get PDF URL and EPS from stored guidance if available
             pdf_url = ""
+            eps_2026 = None
             try:
                 from src.guidance_manager import get_forecast
                 stored = get_forecast(ticker, 2026)
                 if stored:
                     pdf_url = stored.get("pdf_url", "")
+                    eps_2026 = stored.get("eps_dollars")
             except Exception:
                 pass
 
@@ -378,6 +380,7 @@ def fetch_fcf_yield_forecast_2026(ticker: str, fcf_guidance_billions: float = No
                 "confidence": "Official",
                 "source": "Company guidance",
                 "eps_growth_rate": round(eps_growth, 2),
+                "eps_2026": eps_2026,  # From stored guidance
                 "fcf_margin_hist": 0,  # Not applicable for official guidance
                 "capex_margin_hist": 0,  # Not applicable for official guidance
                 "pdf_url": pdf_url,  # Source PDF link
@@ -510,6 +513,7 @@ def fetch_fcf_yield_forecast_2026(ticker: str, fcf_guidance_billions: float = No
                 "fcf_2026": round(fcf_2026 / 1e9, 2),  # Convert to billions
                 "market_cap_2026": round(mc_2026 / 1e9, 2),  # Convert to billions
                 "eps_growth_rate": round(eps_growth * 100, 2),
+                "eps_2026": None,  # Not calculated for forecasted path
                 "fcf_margin_hist": round(fcf_margin * 100, 2),
                 "capex_margin_hist": round(capex_margin * 100, 2),
                 "confidence": confidence,
