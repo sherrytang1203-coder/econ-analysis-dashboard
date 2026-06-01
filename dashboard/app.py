@@ -38,7 +38,7 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
     /* Remove all padding on mobile for full-width charts */
     .main .block-container {
         padding: 0 !important;
