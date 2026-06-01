@@ -91,9 +91,24 @@ st.markdown("""
         padding: 0 !important;
     }
 
-    /* Force SVG to take full width */
+    /* Force SVG to take full width and disable scrolling */
     svg.main-svg {
         width: 100vw !important;
+        touch-action: none !important;
+        pointer-events: auto !important;
+    }
+
+    /* Disable chart scrolling and panning on mobile */
+    .js-plotly-plot {
+        touch-action: none !important;
+        overflow: visible !important;
+    }
+
+    /* Disable scrolling on chart containers */
+    div[class*="plotly"] {
+        overflow: visible !important;
+        overflow-x: visible !important;
+        overflow-y: visible !important;
     }
 
     /* Make plotly containers full width, no margins */
@@ -1319,10 +1334,10 @@ def render_single_stock(ticker: str) -> None:
         ("All", None),
     ]
     _apply_range_buttons(fig_price, price_df, "date", "close", timeframes=timeframes)
-    st.plotly_chart(fig_price, use_container_width=True, config={"displayModeBar": False})
+    st.plotly_chart(fig_price, use_container_width=True, config={"displayModeBar": False, "scrollZoom": False})
 
     with st.container(border=False):
-        st.plotly_chart(_rsi_chart(rsi_daily, rsi_weekly), use_container_width=True, config={"displayModeBar": False})
+        st.plotly_chart(_rsi_chart(rsi_daily, rsi_weekly), use_container_width=True, config={"displayModeBar": False, "scrollZoom": False})
 
     # ── Fundamentals ─────────────────────────────────────────────────────────
     st.markdown('<div class="sec-label">Fundamentals</div>', unsafe_allow_html=True)
