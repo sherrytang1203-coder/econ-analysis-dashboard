@@ -96,10 +96,18 @@ st.markdown("""
         width: 100vw !important;
     }
 
-    /* Allow hover/tap tooltips but prevent scrolling */
+    /* Allow hover/tap tooltips but prevent scrolling & keyboard */
     .js-plotly-plot {
         overflow: visible !important;
         touch-action: pan-y !important;
+        outline: none !important;
+        -webkit-tap-highlight-color: transparent !important;
+        user-select: none !important;
+    }
+
+    svg.main-svg {
+        outline: none !important;
+        -webkit-tap-highlight-color: transparent !important;
     }
 
     /* Make plotly containers full width, no margins */
