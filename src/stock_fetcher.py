@@ -507,8 +507,8 @@ def fetch_fcf_yield_forecast_2026(ticker: str, fcf_guidance_billions: float = No
 
             return {
                 "fcf_yield_2026": round(fcf_yield_2026, 2),
-                "fcf_2026": round(fcf_2026, 0),
-                "market_cap_2026": round(mc_2026, 0),
+                "fcf_2026": round(fcf_2026 / 1e9, 2),  # Convert to billions
+                "market_cap_2026": round(mc_2026 / 1e9, 2),  # Convert to billions
                 "eps_growth_rate": round(eps_growth * 100, 2),
                 "fcf_margin_hist": round(fcf_margin * 100, 2),
                 "capex_margin_hist": round(capex_margin * 100, 2),
