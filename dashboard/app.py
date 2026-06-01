@@ -1321,12 +1321,12 @@ def render_single_stock(ticker: str) -> None:
     _apply_range_buttons(fig_price, price_df, "date", "close", timeframes=timeframes)
     st.plotly_chart(fig_price, use_container_width=True, config={"displayModeBar": False})
 
-    with st.container(border=True):
+    with st.container(border=False):
         st.plotly_chart(_rsi_chart(rsi_daily, rsi_weekly), use_container_width=True, config={"displayModeBar": False})
 
     # ── Fundamentals ─────────────────────────────────────────────────────────
     st.markdown('<div class="sec-label">Fundamentals</div>', unsafe_allow_html=True)
-    with st.container(border=True):
+    with st.container(border=False):
         fa, fb, fc = st.columns(3)
 
         with fa:
@@ -1462,7 +1462,7 @@ def render_single_stock(ticker: str) -> None:
     div_hist = _stock_dividend_yield_history(ticker)
     if not div_hist.empty:
         st.markdown('<div class="sec-label">Dividend Trend</div>', unsafe_allow_html=True)
-        with st.container(border=True):
+        with st.container(border=False):
             fig_div = go.Figure(go.Scatter(
                 x=div_hist["date"], y=div_hist["dividend_yield"],
                 mode="lines+markers", name="Dividend Yield",
