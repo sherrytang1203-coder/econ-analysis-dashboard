@@ -331,16 +331,17 @@ def fetch_fcf_yield_forecast_2026(ticker: str, fcf_guidance_billions: float = No
         }
     """
     # Try to load stored guidance first
+    stored_guidance = None
     if fcf_guidance_billions is None and use_stored:
         try:
             from src.guidance_manager import get_forecast
-            stored = get_forecast(ticker, 2026)
-            if stored and stored.get("fcf_billions"):
-                fcf_guidance_billions = stored["fcf_billions"]
+            stored_guidance = get_forecast(ticker, 2026)
+            if stored_guidance and stored_guidance.get("fcf_billions"):
+                fcf_guidance_billions = stored_guidance["fcf_billions"]
         except Exception:
             pass
 
-    # If official guidance provided or loaded, use it
+    # If official guidance provided or loaded, use it (FCF-based forecast)
     if fcf_guidance_billions is not None and fcf_guidance_billions > 0:
         try:
             t = yf.Ticker(ticker)
@@ -389,6 +390,7 @@ def fetch_fcf_yield_forecast_2026(ticker: str, fcf_guidance_billions: float = No
             return None
 
     # Fall back to calculated approach
+    # But use official EPS if available from stored guidance
     try:
         t = yf.Ticker(ticker)
         info = t.info
@@ -401,6 +403,11 @@ def fetch_fcf_yield_forecast_2026(ticker: str, fcf_guidance_billions: float = No
 
         if not all([current_mc, trailing_eps, forward_eps, shares]):
             return None
+
+        # Check if we have official EPS guidance from stored data
+        official_eps_2026 = None
+        if stored_guidance and stored_guidance.get("eps_dollars"):
+            official_eps_2026 = stored_guidance.get("eps_dollars")
 
         # Calculate EPS growth rate (forward vs trailing)
         # Only use if trailing EPS is reliably positive (> 0.1)
@@ -513,10 +520,11 @@ def fetch_fcf_yield_forecast_2026(ticker: str, fcf_guidance_billions: float = No
                 "fcf_2026": round(fcf_2026 / 1e9, 2),  # Convert to billions
                 "market_cap_2026": round(mc_2026 / 1e9, 2),  # Convert to billions
                 "eps_growth_rate": round(eps_growth * 100, 2),
-                "eps_2026": None,  # Not calculated for forecasted path
+                "eps_2026": official_eps_2026,  # From stored guidance if available
                 "fcf_margin_hist": round(fcf_margin * 100, 2),
                 "capex_margin_hist": round(capex_margin * 100, 2),
                 "confidence": confidence,
+                "pdf_url": stored_guidance.get("pdf_url", "") if stored_guidance else "",
             }
 
         except Exception:
