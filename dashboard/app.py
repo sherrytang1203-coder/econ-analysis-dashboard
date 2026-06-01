@@ -171,6 +171,28 @@ st.markdown("""
     }
 }
 </style>
+<script>
+// Prevent keyboard from appearing on chart taps
+document.addEventListener('touchstart', (e) => {
+  if (e.target.closest('.js-plotly-plot') || e.target.closest('svg.main-svg')) {
+    e.target.blur();
+    if (document.activeElement) {
+      document.activeElement.blur();
+    }
+  }
+}, false);
+
+// Prevent focus on Plotly elements
+document.addEventListener('focus', (e) => {
+  if (e.target.closest('.js-plotly-plot') || e.target.closest('svg.main-svg')) {
+    setTimeout(() => {
+      if (document.activeElement && document.activeElement !== document.body) {
+        document.activeElement.blur();
+      }
+    }, 0);
+  }
+}, true);
+</script>
 """, unsafe_allow_html=True)
 
 # ── Store ─────────────────────────────────────────────────────────────────────
