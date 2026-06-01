@@ -1,10 +1,106 @@
 {
+  "COF": {
+    "2026": {
+      "fcf_billions": null,
+      "eps_dollars": 19.27,
+      "source": "Capital One Q1 2026 earnings guidance (analyst consensus)",
+      "pdf_url": "https://www.sec.gov/Archives/edgar/data/0000927628/000092762826000039/ex991q12026earningsrelease.htm"
+    }
+  },
+  "MU": {
+    "2026": {
+      "fcf_billions": null,
+      "eps_dollars": 58.05,
+      "source": "Micron Technology Q2 2026 earnings guidance",
+      "pdf_url": "https://www.tipranks.com/stocks/mu/earnings"
+    }
+  },
+  "GOOGL": {
+    "2026": {
+      "fcf_billions": null,
+      "eps_dollars": 14.22,
+      "source": "Alphabet Q1 2026 10-Q filing (analyst estimate)",
+      "pdf_url": "https://www.sec.gov/Archives/edgar/data/0001652044/000165204426000048/goog-20260331.htm"
+    }
+  },
+  "MKL": {
+    "2026": {
+      "fcf_billions": null,
+      "eps_dollars": 113.57,
+      "source": "Markel Group Q1 2026 earnings",
+      "pdf_url": "https://ir.mklgroup.com/"
+    }
+  },
+  "DEO": {
+    "2026": {
+      "fcf_billions": null,
+      "eps_dollars": 1.67,
+      "source": "Diageo FY2026 Form 6-K filing (analyst average)",
+      "pdf_url": "https://www.sec.gov/Archives/edgar/data/0000835403/000165495426004389/a1300d.htm"
+    }
+  },
+  "BAM": {
+    "2026": {
+      "fcf_billions": null,
+      "eps_dollars": null,
+      "source": "Brookfield Asset Management Q1 2026 earnings (16.5% EPS growth guidance)",
+      "pdf_url": "https://bam.brookfield.com/sites/brookfield-bam-v2/files/BAM-IR-Master/Press-Releases/2026/Q1-26-BAM-Press-Release.pdf"
+    }
+  },
+  "BN": {
+    "2026": {
+      "fcf_billions": null,
+      "eps_dollars": 0.66,
+      "source": "Brookfield Corporation Q1 2026 earnings (Q1 actual: $0.66)",
+      "pdf_url": "https://www.sec.gov/Archives/edgar/data/0001001085/000117184326003394/exh_991.htm"
+    }
+  },
+  "PM": {
+    "2026": {
+      "fcf_billions": null,
+      "eps_dollars": 8.44,
+      "source": "Philip Morris Q1 2026 FY2026 guidance ($8.36-$8.51 adjusted)",
+      "pdf_url": "https://www.stocktitan.net/sec-filings/PM/8-k-philip-morris-international-inc-reports-material-event-e070ff618d80.html"
+    }
+  },
+  "ULTA": {
+    "2026": {
+      "fcf_billions": null,
+      "eps_dollars": 28.30,
+      "source": "Ulta Beauty FY2026 guidance ($28.05-$28.55)",
+      "pdf_url": "https://www.ulta.com/investor/news-events/press-releases/detail/224/ulta-beauty-announces-fourth-quarter-and-fiscal-2025"
+    }
+  },
+  "MO": {
+    "2026": {
+      "fcf_billions": null,
+      "eps_dollars": 5.64,
+      "source": "Altria Q1 2026 FY2026 guidance ($5.56-$5.72 adjusted)",
+      "pdf_url": "https://investor.altria.com/press-releases/news-details/2026/Altria-Reports-2026-First-Quarter-Results-Reaffirms-Full-Year-Guidance/default.aspx"
+    }
+  },
+  "PYPL": {
+    "2026": {
+      "fcf_billions": null,
+      "eps_dollars": 5.22,
+      "source": "PayPal 2026 earnings guidance",
+      "pdf_url": "https://www.sec.gov/Archives/edgar/data/0001633917/000163391726000065/pypl1q-26earningsrelease.htm"
+    }
+  },
   "OTIS": {
     "2026": {
       "fcf_billions": 1.625,
-      "eps_dollars": 4.220000000000001,
-      "source": "IR Presentation (1Q26-Otis-Earnings-Webcast.pdf)",
+      "eps_dollars": 4.22,
+      "source": "Otis Q1 2026 Earnings Webcast ($1.6B-$1.65B FCF, $4.20-$4.24 EPS)",
       "pdf_url": "https://s203.q4cdn.com/227649559/files/doc_financials/2026/q1/1Q26-Otis-Earnings-Webcast.pdf"
+    }
+  },
+  "MRSH": {
+    "2026": {
+      "fcf_billions": null,
+      "eps_dollars": 10.34,
+      "source": "Marsh & McLennan Q1 2026 earnings (analyst forecast FY2026)",
+      "pdf_url": "https://www.sec.gov/Archives/edgar/data/62709/000006270926000096/mmc1q2026ex991newsrelease.htm"
     }
   }
 }
