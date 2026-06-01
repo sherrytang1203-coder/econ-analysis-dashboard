@@ -143,6 +143,24 @@ st.markdown("""
 
     /* Tighten header */
     h1 { font-size: 1.4rem !important; }
+
+    /* Remove margins from metric cards and containers */
+    div[data-testid="stMetric"] {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+    }
+    div[class*="metric"] {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+    }
+
+    /* Target parent containers of metrics */
+    div[data-testid="stHorizontalBlock"] div {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
 }
 </style>
 """, unsafe_allow_html=True)
