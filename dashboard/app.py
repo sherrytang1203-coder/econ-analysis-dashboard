@@ -863,8 +863,8 @@ _CARD_CSS = """
 </style>
 """
 
-def _forecast_source_html(fcf_forecast: dict) -> str:
-    """Generate HTML for forecast metrics with source attribution."""
+def _get_forecast_html_block(fcf_forecast: dict) -> str:
+    """Generate forecast metrics HTML block (to be embedded in parent f-string)."""
     if not fcf_forecast:
         return ""
 
@@ -948,7 +948,7 @@ def _stock_metric_cards(info: dict, fcf_yield, curr_rsi_d, curr_rsi_w, fcf_forec
         <div class="mval {fcf_cls}">{v(fcf_yield,'.1f',suf='%') if fcf_yield is not None else 'N/A'}</div>
       </div>
     </div>
-    {_forecast_source_html(fcf_forecast) if fcf_forecast else ''}
+    {_get_forecast_html_block(fcf_forecast) if fcf_forecast else ''}
   </div>
 
   <div class="mgroup" style="--gc:#FF9800">
