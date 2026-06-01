@@ -39,9 +39,9 @@ st.set_page_config(
 st.markdown("""
 <style>
 @media (max-width: 1024px) {
-    /* Remove padding on sides, add more top padding for titles */
+    /* Remove padding on sides, add substantial top padding for titles */
     .main .block-container {
-        padding: 24px 0 0 0 !important;
+        padding: 48px 8px 0 8px !important;
         margin: 0 !important;
         max-width: 100% !important;
     }
