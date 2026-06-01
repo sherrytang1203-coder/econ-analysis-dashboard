@@ -926,14 +926,12 @@ def _stock_metric_cards(info: dict, fcf_yield, curr_rsi_d, curr_rsi_w, fcf_forec
       <div class="mitem">
         <div class="mlabel">FCF Yield 2026F</div>
         <div class="mval">{fcf_forecast['fcf_yield_2026']:.1f}%</div>
+        {'<div style="font-size:0.7em; opacity:0.5; margin-top:2px">(sourced from ' + fcf_forecast.get(\'pdf_url\', \'\').split(\'/\')[-1] + ')</div>' if fcf_forecast.get('confidence') == 'Official' and fcf_forecast.get('pdf_url') else ''}
       </div>
       <div class="mitem">
         <div class="mlabel" style="font-size:0.85em">Confidence: {fcf_forecast['confidence']}</div>
         <div class="mval" style="font-size:0.9em; opacity:0.8">EPS Growth: {fcf_forecast['eps_growth_rate']:.1f}%</div>
       </div>
-    </div>
-    <div style="margin-top:6px; padding-top:6px; font-size:0.75em; opacity:0.6">
-      {'<a href="' + fcf_forecast['pdf_url'] + '" target="_blank" style="color:inherit; text-decoration:underline">📄 Source PDF</a>' if fcf_forecast.get('pdf_url') else ''}
     </div>''' if fcf_forecast else ''}
   </div>
 
@@ -981,6 +979,17 @@ def render_single_stock(ticker: str) -> None:
         curr_rsi_w   = float(rsi_weekly["rsi"].iloc[-1]) if not rsi_weekly.empty else None
 
         _stock_metric_cards(info, fcf_yield, curr_rsi_d, curr_rsi_w, fcf_forecast)
+
+        # Show source reference for official guidance
+        if fcf_forecast and fcf_forecast.get('confidence') == 'Official' and fcf_forecast.get('pdf_url'):
+            pdf_name = fcf_forecast['pdf_url'].split('/')[-1]
+            source_html = f'''
+            <div style="margin-top:12px; padding:8px; background:rgba(255,152,0,0.1); border-left:3px solid rgba(255,152,0,0.3); border-radius:4px; font-size:0.85em">
+                <span style="opacity:0.7">📋 Source: </span>
+                <a href="{fcf_forecast['pdf_url']}" target="_blank" style="color:#FF9800; text-decoration:underline">{pdf_name}</a>
+            </div>
+            '''
+            st.markdown(source_html, unsafe_allow_html=True)
 
     st.divider()
 
