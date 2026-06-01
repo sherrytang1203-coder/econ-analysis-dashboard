@@ -341,43 +341,6 @@ def fetch_fcf_yield_forecast_2026(ticker: str, fcf_guidance_billions: float = No
         except Exception as e:
             pass
 
-    # If we have official EPS guidance BUT NO FCF, return minimal forecast with EPS
-    # (Don't return early if we have FCF - let it fall through to FCF calculation)
-    if stored_guidance and stored_guidance.get("eps_dollars") and not fcf_guidance_billions:
-        try:
-            t = yf.Ticker(ticker)
-            info = t.info
-            current_mc = info.get("marketCap", 0)
-            if current_mc and current_mc > 0:
-                current_mc_billions = current_mc / 1e9
-            else:
-                current_mc_billions = 0
-
-            # Return EPS-only forecast
-            return {
-                "fcf_yield_2026": 0,
-                "fcf_2026": 0,
-                "market_cap_2026": current_mc_billions,
-                "eps_growth_rate": 0,
-                "eps_2026": stored_guidance.get("eps_dollars"),
-                "fcf_margin_hist": 0,
-                "capex_margin_hist": 0,
-                "confidence": "High",
-                "pdf_url": stored_guidance.get("pdf_url", ""),
-            }
-        except Exception as e:
-            # Even if exception, return something
-            return {
-                "fcf_yield_2026": 0,
-                "fcf_2026": 0,
-                "market_cap_2026": 0,
-                "eps_growth_rate": 0,
-                "eps_2026": stored_guidance.get("eps_dollars"),
-                "fcf_margin_hist": 0,
-                "capex_margin_hist": 0,
-                "confidence": "High",
-                "pdf_url": stored_guidance.get("pdf_url", ""),
-            }
 
     # If official guidance provided or loaded, use it (FCF-based forecast)
     if fcf_guidance_billions is not None and fcf_guidance_billions > 0:
@@ -530,8 +493,10 @@ def fetch_fcf_yield_forecast_2026(ticker: str, fcf_guidance_billions: float = No
                 else:
                     avg_fcf = None
 
-            if not avg_fcf or avg_fcf <= 0:
-                return None
+            # Use calculated FCF even if negative (shows deteriorating cash flow)
+            # Only fail if FCF data is completely missing
+            if avg_fcf is None:
+                avg_fcf = 0
 
             # Calculate FCF margin and CapEx margin
             fcf_margin = avg_fcf / avg_revenue if avg_revenue > 0 else 0
@@ -585,10 +550,16 @@ def fetch_fcf_yield_forecast_2026(ticker: str, fcf_guidance_billions: float = No
     except Exception:
         # If calculation failed but we have official EPS, return it with zero FCF
         if stored_guidance and stored_guidance.get("eps_dollars"):
+            try:
+                t = yf.Ticker(ticker)
+                current_mc = t.info.get("marketCap", 0) / 1e9 if t.info.get("marketCap") else 0
+            except:
+                current_mc = 0
+
             return {
                 "fcf_yield_2026": 0,
                 "fcf_2026": 0,
-                "market_cap_2026": 0,
+                "market_cap_2026": current_mc,
                 "eps_growth_rate": 0,
                 "eps_2026": stored_guidance.get("eps_dollars"),
                 "fcf_margin_hist": 0,
