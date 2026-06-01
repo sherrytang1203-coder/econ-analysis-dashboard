@@ -82,6 +82,18 @@ st.markdown("""
         max-height: none !important;
         margin: 0 !important;
         padding: 0 !important;
+        overflow: hidden !important;
+    }
+
+    /* Remove plotly internal margins */
+    .js-plotly-plot .plotly {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    /* Force SVG to take full width */
+    svg.main-svg {
+        width: 100vw !important;
     }
 
     /* Make plotly containers full width, no margins */
@@ -92,9 +104,21 @@ st.markdown("""
         margin-left: calc(-50vw + 50%) !important;
     }
 
-    /* Remove container borders on mobile */
+    /* Remove container borders and padding on mobile */
     div[data-testid="stContainer"] {
         margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+    }
+
+    /* Remove all vertical spacing */
+    div[class*="element-container"] {
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    /* Remove expandable container padding */
+    div[data-testid="stExpanderDetails"] {
         padding: 0 !important;
     }
 
