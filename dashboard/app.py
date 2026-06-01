@@ -117,16 +117,7 @@ if "update_results" not in st.session_state:
 
 
 def _load_custom_stocks() -> dict:
-    try:
-        if store.is_supabase:
-            r = store._supa.table("watchlist").select("ticker,name").execute()
-            return {row["ticker"]: row["name"] for row in (r.data or [])}
-        rows = store._conn.execute(
-            "SELECT ticker, name FROM watchlist ORDER BY added_at"
-        ).fetchall()
-        return {ticker: name for ticker, name in rows}
-    except Exception:
-        pass
+    # Load from JSON file first (git-tracked for sync across deployments)
     if os.path.exists(CUSTOM_STOCKS_PATH):
         try:
             with open(CUSTOM_STOCKS_PATH) as f:
@@ -137,30 +128,26 @@ def _load_custom_stocks() -> dict:
 
 
 def _save_custom_stock(ticker: str, name: str) -> None:
-    from datetime import datetime, timezone
-    added_at = datetime.now(timezone.utc).isoformat()
+    """Save custom stock to JSON file (git-tracked for sync)."""
     try:
-        if store.is_supabase:
-            store._supa.table("watchlist").upsert(
-                {"ticker": ticker, "name": name, "added_at": added_at}
-            ).execute()
-        else:
-            store._conn.execute(
-                "INSERT OR REPLACE INTO watchlist (ticker, name, added_at) VALUES (?,?,?)",
-                (ticker, name, added_at),
-            )
-            store._conn.commit()
+        stocks = _load_custom_stocks()
+        stocks[ticker] = name
+        os.makedirs(os.path.dirname(CUSTOM_STOCKS_PATH), exist_ok=True)
+        with open(CUSTOM_STOCKS_PATH, "w") as f:
+            json.dump(stocks, f, indent=2)
     except Exception as e:
         st.session_state["watchlist_error"] = str(e)
 
 
 def _remove_custom_stock(ticker: str) -> None:
+    """Remove custom stock from JSON file (git-tracked for sync)."""
     try:
-        if store.is_supabase:
-            store._supa.table("watchlist").delete().eq("ticker", ticker).execute()
-        else:
-            store._conn.execute("DELETE FROM watchlist WHERE ticker = ?", (ticker,))
-            store._conn.commit()
+        stocks = _load_custom_stocks()
+        if ticker in stocks:
+            del stocks[ticker]
+            os.makedirs(os.path.dirname(CUSTOM_STOCKS_PATH), exist_ok=True)
+            with open(CUSTOM_STOCKS_PATH, "w") as f:
+                json.dump(stocks, f, indent=2)
     except Exception as e:
         st.session_state["watchlist_error"] = str(e)
 
