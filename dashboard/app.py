@@ -21,7 +21,8 @@ from src.market_fetcher import fetch_market_snapshot, fetch_historical, fetch_se
 from src.stock_fetcher import (fetch_stock_info, fetch_stock_price, fetch_stock_ohlcv,
                                fetch_revenue, fetch_pe_history, fetch_loss_years,
                                fetch_fcf_yield, fetch_fcf_history, fetch_rsi,
-                               fetch_fcf_yield_forecast_2026, fetch_dividend_yield_history)
+                               fetch_fcf_yield_forecast_2026, fetch_dividend_yield_history,
+                               fetch_premarket_price)
 from src.news_fetcher import deduplicate_by_similarity
 from src.news_analyzer import get_groq_client, groq_key_configured
 from src.news_pipeline import run_pipeline, needs_run
@@ -288,6 +289,11 @@ def _stock_current_price(ticker):
         return {"price": current, "change": change, "change_pct": change_pct}
     except:
         return {"price": None, "change": 0, "change_pct": 0}
+
+@st.cache_data(ttl=300)
+def _stock_premarket_price(ticker):
+    """Get pre-market stock price and change (5-minute cache for frequent updates)."""
+    return fetch_premarket_price(ticker)
 
 @st.cache_data(ttl=3600)
 def _stock_price(ticker, period="5y"):
@@ -695,7 +701,7 @@ def render_capital_markets():
                     hist_df, f"{sector_name} ({clicked_ticker})", "Price (USD)",
                     x_col="date", y_col="close", color="#5C6BC0",
                 )
-                st.plotly_chart(fig5, use_container_width=True, config={"displayModeBar": False, "staticPlot": True})
+                st.plotly_chart(fig5, use_container_width=True, config={"displayModeBar": False, "staticPlot": False, "responsive": True})
             else:
                 st.warning(f"Could not load 5-year data for {sector_name}.")
         else:
@@ -815,7 +821,7 @@ def render_market_leading_charts():
                 showlegend=False,
             )
             _apply_range_buttons(fig_sp, spread, "date", "value")
-            st.plotly_chart(fig_sp, use_container_width=True, config={"displayModeBar": False, "staticPlot": True})
+            st.plotly_chart(fig_sp, use_container_width=True, config={"displayModeBar": False, "staticPlot": False, "responsive": True})
         else:
             st.info("Sync FRED data to see the yield spread chart.")
 
@@ -1150,7 +1156,7 @@ def _get_forecast_html_block(fcf_forecast: dict) -> str:
         return f"<div style='color:red;'>Error rendering forecast: {str(e)}</div>"
 
 
-def _stock_metric_cards(info: dict, fcf_yield, curr_rsi_d, curr_rsi_w, fcf_forecast=None, ticker: str = "", price_data: dict = None) -> None:
+def _stock_metric_cards(info: dict, fcf_yield, curr_rsi_d, curr_rsi_w, fcf_forecast=None, ticker: str = "", price_data: dict = None, premarket_data: dict = None) -> None:
     pe  = info.get("pe_ratio")
     fpe = info.get("forward_pe")
     eps = info.get("eps")
@@ -1178,20 +1184,42 @@ def _stock_metric_cards(info: dict, fcf_yield, curr_rsi_d, curr_rsi_w, fcf_forec
     # Add ticker and price to name if provided
     ticker_suffix = f" ({ticker})" if ticker else ""
     price_suffix = ""
-    if price_data and price_data.get("price"):
-        price = price_data["price"]
-        change = price_data.get("change", 0)
-        change_pct = price_data.get("change_pct", 0)
-        color = "#2ecc71" if change >= 0 else "#e74c3c"  # green for up, red for down
-        arrow = "▲" if change >= 0 else "▼"
-        price_suffix = f'  <span style="font-size:20px; color:{color};">${price:.2f} {arrow} {abs(change_pct):.2f}%</span>'
+
+    # Display both pre-market and closing prices when available
+    has_valid_premarket = premarket_data and premarket_data.get("price") is not None
+    has_closing_price = price_data and price_data.get("price") is not None
+
+    if has_valid_premarket or has_closing_price:
+        price_parts = []
+
+        # Add pre-market price if available
+        if has_valid_premarket:
+            pm_price = premarket_data["price"]
+            pm_change = premarket_data.get("change", 0)
+            pm_change_pct = premarket_data.get("change_pct", 0)
+            pm_color = "#2ecc71" if pm_change >= 0 else "#e74c3c"
+            pm_arrow = "▲" if pm_change >= 0 else "▼"
+            price_parts.append(f'<span style="font-size:14px; color:#9ca3af;">Pre-Market:</span> <span style="font-size:18px; color:{pm_color};">${pm_price:.2f} {pm_arrow} {abs(pm_change_pct):.2f}%</span>')
+
+        # Add closing/regular price if available
+        if has_closing_price:
+            close_price = price_data["price"]
+            close_change = price_data.get("change", 0)
+            close_change_pct = price_data.get("change_pct", 0)
+            close_color = "#2ecc71" if close_change >= 0 else "#e74c3c"
+            close_arrow = "▲" if close_change >= 0 else "▼"
+            price_parts.append(f'<span style="font-size:14px; color:#9ca3af;">Close:</span> <span style="font-size:18px; color:{close_color};">${close_price:.2f} {close_arrow} {abs(close_change_pct):.2f}%</span>')
+
+        # Combine both prices on same line with spacing
+        price_suffix = '  &nbsp;&nbsp;|&nbsp;&nbsp;  '.join(price_parts)
 
     badge_sec = f'<span class="badge badge-sector">{sector}</span>' if sector else ""
     badge_ind = f'<span class="badge badge-industry">{industry}</span>' if industry else ""
 
     html = f"""{_CARD_CSS}
 <div class="stock-header">
-  <div class="stock-name">{name}{ticker_suffix}{price_suffix}</div>
+  <div class="stock-name">{name}{ticker_suffix}</div>
+  {f'<div style="margin-top: 8px; margin-bottom: 12px;">{price_suffix}</div>' if price_suffix else ''}
   <div>{badge_sec}{badge_ind}</div>
 </div>
 <div class="metric-grid">
@@ -1286,6 +1314,7 @@ def render_single_stock(ticker: str) -> None:
     with st.spinner("Loading stock data..."):
         info         = _stock_info(ticker)
         current_price = _stock_current_price(ticker)
+        premarket_price = _stock_premarket_price(ticker)
         fcf_yield    = _stock_fcf_yield(ticker)
         fcf_forecast = _stock_fcf_forecast_2026(ticker)
         rsi_daily    = _stock_rsi(ticker, weekly=False)
@@ -1302,7 +1331,7 @@ def render_single_stock(ticker: str) -> None:
 
     with col_metrics:
         # Load metrics (includes stock title with sector/industry badges)
-        _stock_metric_cards(info, fcf_yield, curr_rsi_d, curr_rsi_w, fcf_forecast, ticker, current_price)
+        _stock_metric_cards(info, fcf_yield, curr_rsi_d, curr_rsi_w, fcf_forecast, ticker, current_price, premarket_price)
 
     with col_btn:
         if st.button("Remove", key=f"remove_{ticker}", help="Remove from watchlist"):
@@ -1388,11 +1417,12 @@ def render_single_stock(ticker: str) -> None:
     _apply_range_buttons(fig_price, price_df, "date", "close", timeframes=timeframes)
     st.plotly_chart(fig_price, use_container_width=True, config={
         "displayModeBar": False,
-        "staticPlot": True
+        "staticPlot": False,
+        "responsive": True
     })
 
     with st.container(border=False):
-        st.plotly_chart(_rsi_chart(rsi_daily, rsi_weekly), use_container_width=True, config={"displayModeBar": False, "staticPlot": True})
+        st.plotly_chart(_rsi_chart(rsi_daily, rsi_weekly), use_container_width=True, config={"displayModeBar": False, "staticPlot": False, "responsive": True})
 
     # ── Fundamentals ─────────────────────────────────────────────────────────
     st.markdown('<div class="sec-label">Fundamentals</div>', unsafe_allow_html=True)
@@ -1445,7 +1475,7 @@ def render_single_stock(ticker: str) -> None:
                                categoryarray=all_year_strs, gridcolor="#f3f4f6",
                                tickfont=dict(size=11, color="#9ca3af"), showline=False),
                 )
-                st.plotly_chart(fig_pe, use_container_width=True, config={"displayModeBar": False, "staticPlot": True})
+                st.plotly_chart(fig_pe, use_container_width=True, config={"displayModeBar": False, "staticPlot": False, "responsive": True})
                 if loss_years:
                     st.caption(f"✕ Loss year(s): {', '.join(str(y) for y in sorted(loss_years))}")
             else:
@@ -1468,7 +1498,7 @@ def render_single_stock(ticker: str) -> None:
                                tickfont=dict(size=11, color="#9ca3af"),
                                zeroline=False, showline=False),
                 )
-                st.plotly_chart(fig_rev, use_container_width=True, config={"displayModeBar": False, "staticPlot": True})
+                st.plotly_chart(fig_rev, use_container_width=True, config={"displayModeBar": False, "staticPlot": False, "responsive": True})
             else:
                 st.info("Revenue data unavailable.")
 
@@ -1524,7 +1554,7 @@ def render_single_stock(ticker: str) -> None:
                     showlegend=False,
                     dragmode=False,
                 )
-                st.plotly_chart(fig_fcf, use_container_width=True, config={"displayModeBar": False, "staticPlot": True})
+                st.plotly_chart(fig_fcf, use_container_width=True, config={"displayModeBar": False, "staticPlot": False, "responsive": True})
             else:
                 st.info("FCF Yield data unavailable.")
 

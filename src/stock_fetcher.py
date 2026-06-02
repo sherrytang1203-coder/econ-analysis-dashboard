@@ -73,6 +73,23 @@ def fetch_stock_info(ticker: str) -> dict:
         return {"name": ticker}
 
 
+def fetch_premarket_price(ticker: str) -> dict:
+    """Return pre-market stock price and change."""
+    try:
+        t = yf.Ticker(ticker)
+        info = t.info
+        premarket_price = info.get("preMarketPrice")
+        premarket_change = info.get("preMarketChange", 0)
+        premarket_change_pct = info.get("preMarketChangePercent", 0)
+        return {
+            "price": premarket_price,
+            "change": premarket_change,
+            "change_pct": premarket_change_pct,
+        }
+    except Exception:
+        return {"price": None, "change": 0, "change_pct": 0}
+
+
 def fetch_dividend_yield_history(ticker: str) -> pd.DataFrame:
     """Return historical dividend yield as DataFrame with columns: date, dividend_yield."""
     try:
