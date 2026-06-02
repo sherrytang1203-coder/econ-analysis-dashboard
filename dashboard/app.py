@@ -1081,6 +1081,8 @@ _CARD_CSS = """
 .mval-sm      { font-size: 14px; font-weight: 600; line-height: 1.3; }
 .pos { color: #2ecc71; } .neg { color: #e74c3c; }
 .ob  { color: #e74c3c; } .os  { color: #2ecc71; }
+.price-item { display: inline; }
+.price-separator { display: inline; }
 
 @media (max-width: 1024px) {
   .metric-grid { gap: 8px; margin: 0; }
@@ -1089,6 +1091,8 @@ _CARD_CSS = """
   .mpair { gap: 4px; }
   .mlabel { font-size: 10px; margin-bottom: 2px; }
   .mval { font-size: 16px; }
+  .price-item { display: block; margin: 4px 0; }
+  .price-separator { display: none; }
 }
 </style>
 """
@@ -1199,7 +1203,7 @@ def _stock_metric_cards(info: dict, fcf_yield, curr_rsi_d, curr_rsi_w, fcf_forec
             pm_change_pct = premarket_data.get("change_pct", 0)
             pm_color = "#2ecc71" if pm_change >= 0 else "#e74c3c"
             pm_arrow = "▲" if pm_change >= 0 else "▼"
-            price_parts.append(f'<span style="font-size:14px; color:#9ca3af;">Pre-Market:</span> <span style="font-size:18px; color:{pm_color};">${pm_price:.2f} {pm_arrow} {abs(pm_change_pct):.2f}%</span>')
+            price_parts.append(f'<div class="price-item"><span style="font-size:14px; color:#9ca3af;">Pre-Market:</span> <span style="font-size:18px; color:{pm_color};">${pm_price:.2f} {pm_arrow} {abs(pm_change_pct):.2f}%</span></div>')
 
         # Add closing/regular price if available
         if has_closing_price:
@@ -1208,10 +1212,10 @@ def _stock_metric_cards(info: dict, fcf_yield, curr_rsi_d, curr_rsi_w, fcf_forec
             close_change_pct = price_data.get("change_pct", 0)
             close_color = "#2ecc71" if close_change >= 0 else "#e74c3c"
             close_arrow = "▲" if close_change >= 0 else "▼"
-            price_parts.append(f'<span style="font-size:14px; color:#9ca3af;">Close:</span> <span style="font-size:18px; color:{close_color};">${close_price:.2f} {close_arrow} {abs(close_change_pct):.2f}%</span>')
+            price_parts.append(f'<div class="price-item"><span style="font-size:14px; color:#9ca3af;">Close:</span> <span style="font-size:18px; color:{close_color};">${close_price:.2f} {close_arrow} {abs(close_change_pct):.2f}%</span></div>')
 
-        # Combine both prices on same line with spacing
-        price_suffix = '  &nbsp;&nbsp;|&nbsp;&nbsp;  '.join(price_parts)
+        # Combine both prices with responsive separator
+        price_suffix = '<span class="price-separator"> | </span>'.join(price_parts)
 
     badge_sec = f'<span class="badge badge-sector">{sector}</span>' if sector else ""
     badge_ind = f'<span class="badge badge-industry">{industry}</span>' if industry else ""
