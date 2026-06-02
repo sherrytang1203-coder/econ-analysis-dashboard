@@ -1216,10 +1216,13 @@ def _stock_metric_cards(info: dict, fcf_yield, curr_rsi_d, curr_rsi_w, fcf_forec
     badge_sec = f'<span class="badge badge-sector">{sector}</span>' if sector else ""
     badge_ind = f'<span class="badge badge-industry">{industry}</span>' if industry else ""
 
+    # Build price div separately to avoid nested f-string issues
+    price_div = f'<div style="margin-top: 8px; margin-bottom: 12px;">{price_suffix}</div>' if price_suffix else ''
+
     html = f"""{_CARD_CSS}
 <div class="stock-header">
   <div class="stock-name">{name}{ticker_suffix}</div>
-  {f'<div style="margin-top: 8px; margin-bottom: 12px;">{price_suffix}</div>' if price_suffix else ''}
+  {price_div}
   <div>{badge_sec}{badge_ind}</div>
 </div>
 <div class="metric-grid">
