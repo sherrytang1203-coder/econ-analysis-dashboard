@@ -101,6 +101,17 @@ st.markdown("""
         pointer-events: none !important;
         -webkit-user-drag: none !important;
         user-select: none !important;
+        overflow: hidden !important;
+    }
+
+    /* Prevent any chart movement via CSS transforms */
+    svg.main-svg {
+        transform: none !important;
+        transition: none !important;
+    }
+
+    g.draglayer {
+        display: none !important;
     }
 
     svg.main-svg {
