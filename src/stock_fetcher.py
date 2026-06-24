@@ -2,6 +2,7 @@ import pandas as pd
 import yfinance as yf
 import requests
 import re
+import time
 
 
 def fetch_stock_ohlcv(ticker: str, period: str = "5y") -> pd.DataFrame:
@@ -39,38 +40,59 @@ def fetch_stock_price(ticker: str, period: str = "5y") -> pd.DataFrame:
         return pd.DataFrame(columns=["date", "close"])
 
 
-def fetch_stock_info(ticker: str) -> dict:
-    """Return key current metrics."""
-    try:
-        t = yf.Ticker(ticker)
-        info = t.info
+def fetch_stock_info(ticker: str, retries: int = 3) -> dict:
+    """Return key current metrics.
 
-        # Get dividend yield and annual dividend
-        dividend_yield = None
-        annual_dividend = None
+    Yahoo's quoteSummary endpoint (behind ``t.info``) intermittently rate-limits
+    (HTTP 429) or returns empty, which would otherwise blank every field. Retry a
+    few times with backoff, and fall back to ``fast_info`` (a different, more
+    reliable endpoint) for the fields it can supply. ``ok`` reports whether real
+    data was retrieved so callers can avoid caching a failure.
+    """
+    info = {}
+    for attempt in range(retries):
+        try:
+            t = yf.Ticker(ticker)
+            info = t.info or {}
+            if info.get("marketCap") or info.get("trailingPE") or info.get("regularMarketPrice"):
+                break
+        except Exception:
+            info = {}
+        if attempt < retries - 1:
+            time.sleep(1.5 * (attempt + 1))
 
-        # Get dividend yield - yfinance provides dividendYield as percentage (6.09, not 0.0609)
-        if "dividendYield" in info and info["dividendYield"]:
-            dividend_yield = info["dividendYield"]
+    # Fallback for the fields fast_info can provide when .info came back empty.
+    if not info.get("marketCap"):
+        try:
+            fi = yf.Ticker(ticker).fast_info
+            info.setdefault("marketCap", fi.get("market_cap"))
+            info.setdefault("fiftyTwoWeekHigh", fi.get("year_high"))
+            info.setdefault("fiftyTwoWeekLow", fi.get("year_low"))
+        except Exception:
+            pass
 
-        # Get annual dividend amount (per share)
-        annual_dividend = info.get("trailingAnnualDividendRate")
+    # Get dividend yield - yfinance provides dividendYield as percentage (6.09, not 0.0609)
+    dividend_yield = info.get("dividendYield") or None
 
-        return {
-            "name":        info.get("longName", ticker),
-            "sector":      info.get("sector", ""),
-            "industry":    info.get("industry", ""),
-            "market_cap":  info.get("marketCap"),
-            "pe_ratio":    info.get("trailingPE"),
-            "forward_pe":  info.get("forwardPE"),
-            "eps":         info.get("trailingEps"),
-            "52w_high":    info.get("fiftyTwoWeekHigh"),
-            "52w_low":     info.get("fiftyTwoWeekLow"),
-            "dividend_yield": dividend_yield,
-            "annual_dividend": annual_dividend,
-        }
-    except Exception:
-        return {"name": ticker}
+    # Get annual dividend amount (per share)
+    annual_dividend = info.get("trailingAnnualDividendRate")
+
+    ok = bool(info.get("marketCap") or info.get("trailingPE") or info.get("trailingEps"))
+
+    return {
+        "name":        info.get("longName", ticker),
+        "sector":      info.get("sector", ""),
+        "industry":    info.get("industry", ""),
+        "market_cap":  info.get("marketCap"),
+        "pe_ratio":    info.get("trailingPE"),
+        "forward_pe":  info.get("forwardPE"),
+        "eps":         info.get("trailingEps"),
+        "52w_high":    info.get("fiftyTwoWeekHigh"),
+        "52w_low":     info.get("fiftyTwoWeekLow"),
+        "dividend_yield": dividend_yield,
+        "annual_dividend": annual_dividend,
+        "ok":          ok,
+    }
 
 
 def fetch_premarket_price(ticker: str) -> dict:

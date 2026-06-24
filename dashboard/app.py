@@ -274,21 +274,77 @@ def _historical(ticker, period="2y"):
 
 @st.cache_data(ttl=3600)
 def _stock_info(ticker):
-    return fetch_stock_info(ticker)
-
-@st.cache_data(ttl=3600)
-def _stock_current_price(ticker):
-    """Get current stock price and daily change."""
+    info = fetch_stock_info(ticker)
+    if not info.get("ok"):
+        # Yahoo rate-limited / returned empty. Raise so st.cache_data does NOT
+        # cache this failure for an hour; the caller handles the fallback.
+        raise RuntimeError(f"info fetch failed for {ticker}")
+    # Persist last-known-good fundamentals (runs only on a real cache miss).
     try:
-        import yfinance as yf
-        t = yf.Ticker(ticker)
-        info = t.info
-        current = info.get("currentPrice") or info.get("regularMarketPrice")
-        change = info.get("regularMarketChange", 0)
-        change_pct = info.get("regularMarketChangePercent", 0)
-        return {"price": current, "change": change, "change_pct": change_pct}
-    except:
-        return {"price": None, "change": 0, "change_pct": 0}
+        store.upsert_stock_fundamentals(ticker, info)
+    except Exception:
+        pass
+    return info
+
+def _stock_info_safe(ticker):
+    """Info fetch with two layers of caching:
+
+    1. In-memory (`_stock_info`, 1h) so we don't hit Yahoo every page load.
+    2. Durable DB cache: every successful live fetch is written to the
+       `stock_fundamentals` table, and if a live fetch fails (Yahoo rate-limit /
+       empty), we serve the last-known-good row instead of showing N/A.
+    """
+    try:
+        return _stock_info(ticker)
+    except Exception:
+        cached = None
+        try:
+            cached = store.get_stock_fundamentals(ticker)
+        except Exception:
+            pass
+        if cached:
+            cached["stale"] = True
+            return cached
+        return fetch_stock_info(ticker)
+
+@st.cache_data(ttl=900)
+def _stock_current_price(ticker):
+    """Current price + daily change.
+
+    Sourced from `fast_info` / the chart endpoint, NOT `t.info` — the
+    quoteSummary endpoint behind `.info` rate-limits intermittently, whereas
+    these endpoints are the reliable ones (same source the RSI/price chart use).
+    """
+    import yfinance as yf
+
+    # Primary: fast_info (lightweight, reliable endpoint).
+    # Use attribute access — yfinance normalizes it, while .get() keys are
+    # camelCase ("lastPrice") and vary across versions.
+    try:
+        fi = yf.Ticker(ticker).fast_info
+        price = fi.last_price
+        prev = fi.previous_close
+        if price is not None:
+            change = (price - prev) if prev else 0
+            change_pct = (change / prev * 100) if prev else 0
+            return {"price": price, "change": change, "change_pct": change_pct}
+    except Exception:
+        pass
+
+    # Fallback: derive from recent close history (chart endpoint)
+    try:
+        hist = fetch_stock_ohlcv(ticker, period="5d")
+        if not hist.empty:
+            closes = hist["close"].tolist()
+            price = closes[-1]
+            prev = closes[-2] if len(closes) >= 2 else price
+            change = price - prev
+            change_pct = (change / prev * 100) if prev else 0
+            return {"price": price, "change": change, "change_pct": change_pct}
+    except Exception:
+        pass
+
+    return {"price": None, "change": 0, "change_pct": 0}
 
 @st.cache_data(ttl=300)
 def _stock_premarket_price(ticker):
@@ -1319,7 +1375,7 @@ def render_single_stock(ticker: str) -> None:
     """, unsafe_allow_html=True)
 
     with st.spinner("Loading stock data..."):
-        info         = _stock_info(ticker)
+        info         = _stock_info_safe(ticker)
         current_price = _stock_current_price(ticker)
         premarket_price = _stock_premarket_price(ticker)
         fcf_yield    = _stock_fcf_yield(ticker)

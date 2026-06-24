@@ -62,6 +62,21 @@ class Store:
                 name     TEXT NOT NULL,
                 added_at TEXT
             );
+            CREATE TABLE IF NOT EXISTS stock_fundamentals (
+                ticker          TEXT PRIMARY KEY,
+                name            TEXT,
+                sector          TEXT,
+                industry        TEXT,
+                market_cap      REAL,
+                pe_ratio        REAL,
+                forward_pe      REAL,
+                eps             REAL,
+                w52_high        REAL,
+                w52_low         REAL,
+                dividend_yield  REAL,
+                annual_dividend REAL,
+                fetched_at      TEXT
+            );
         """)
         self._conn.commit()
 
@@ -334,4 +349,57 @@ class Store:
             self._supa.table("watchlist").delete().eq("ticker", ticker).execute()
         else:
             self._conn.execute("DELETE FROM watchlist WHERE ticker = ?", (ticker,))
+            self._conn.commit()
+
+    # ── Stock fundamentals cache ────────────────────────────────────────────────
+    # Durable last-known-good copy of yfinance `.info` fields, so the stock card
+    # can fall back to stored values when Yahoo rate-limits or returns empty.
+
+    # Map between the fetch_stock_info() dict keys and the table columns
+    # (SQLite column names can't start with a digit, so 52w_* → w52_*).
+    _FUND_COLS = {
+        "name": "name", "sector": "sector", "industry": "industry",
+        "market_cap": "market_cap", "pe_ratio": "pe_ratio",
+        "forward_pe": "forward_pe", "eps": "eps",
+        "52w_high": "w52_high", "52w_low": "w52_low",
+        "dividend_yield": "dividend_yield", "annual_dividend": "annual_dividend",
+    }
+
+    def get_stock_fundamentals(self, ticker: str) -> dict | None:
+        """Return the cached info dict for a ticker, or None if not stored.
+
+        The returned dict is shaped like fetch_stock_info()'s output, plus
+        ``fetched_at`` (ISO timestamp) and ``ok=True``."""
+        if self.is_supabase:
+            r = (self._supa.table("stock_fundamentals")
+                 .select("*").eq("ticker", ticker).limit(1).execute())
+            row = r.data[0] if r.data else None
+        else:
+            cols = ["ticker", "fetched_at", *self._FUND_COLS.values()]
+            cur = self._conn.execute(
+                f"SELECT {', '.join(cols)} FROM stock_fundamentals WHERE ticker = ?",
+                (ticker,),
+            ).fetchone()
+            row = dict(zip(cols, cur)) if cur else None
+        if not row:
+            return None
+        info = {k: row.get(v) for k, v in self._FUND_COLS.items()}
+        info["name"] = info.get("name") or ticker
+        info["fetched_at"] = row.get("fetched_at")
+        info["ok"] = True
+        return info
+
+    def upsert_stock_fundamentals(self, ticker: str, info: dict) -> None:
+        record = {"ticker": ticker,
+                  "fetched_at": datetime.now(timezone.utc).isoformat()}
+        record.update({col: info.get(key) for key, col in self._FUND_COLS.items()})
+        if self.is_supabase:
+            self._supa.table("stock_fundamentals").upsert(record).execute()
+        else:
+            cols = list(record.keys())
+            self._conn.execute(
+                f"INSERT OR REPLACE INTO stock_fundamentals ({', '.join(cols)}) "
+                f"VALUES ({', '.join('?' for _ in cols)})",
+                tuple(record[c] for c in cols),
+            )
             self._conn.commit()
