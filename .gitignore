@@ -18,6 +18,9 @@ venv/
 .venv/
 env/
 
+# Claude Code project instructions (kept local only)
+CLAUDE.md
+
 # IDE
 .vscode/
 .idea/
