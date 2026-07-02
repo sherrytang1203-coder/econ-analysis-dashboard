@@ -27,6 +27,7 @@ from src.news_fetcher import deduplicate_by_similarity
 from src.news_analyzer import get_groq_client, groq_key_configured
 from src.news_pipeline import run_pipeline, needs_run
 from src.earnings_tracker import get_earnings_calendar, format_earnings_for_display
+from dashboard import theme
 
 DB_PATH           = os.path.join(os.path.dirname(__file__), "..", "data", "econ_data.db")
 CUSTOM_STOCKS_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "custom_stocks.json")
@@ -37,164 +38,8 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-st.markdown("""
-<style>
-@media (max-width: 1024px) {
-    /* Remove padding on sides, add substantial top padding for titles */
-    .main .block-container {
-        padding: 48px 8px 0 8px !important;
-        margin: 0 !important;
-        max-width: 100% !important;
-    }
-
-    /* Stack all columns vertically */
-    div[data-testid="stHorizontalBlock"] {
-        flex-direction: column !important;
-    }
-    div[data-testid="column"] {
-        width: 100% !important;
-        flex: 1 1 100% !important;
-        min-width: 100% !important;
-    }
-
-    /* Make tab bar scroll horizontally */
-    div[data-testid="stTabBar"] {
-        overflow-x: auto !important;
-        flex-wrap: nowrap !important;
-    }
-    div[data-testid="stTabBar"] button {
-        white-space: nowrap !important;
-        flex-shrink: 0 !important;
-    }
-
-    /* Stack metric card groups vertically */
-    .metric-grid { flex-direction: column !important; }
-    .mgroup      { width: 100% !important; }
-    .mpair       { gap: 16px !important; }
-    .mval        { font-size: 22px !important; }
-
-    /* Shrink title */
-    .stock-name  { font-size: 20px !important; }
-
-    /* Make charts full width on mobile with tight margins */
-    .js-plotly-plot {
-        width: 100% !important;
-        height: auto !important;
-        max-height: none !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        overflow: visible !important;
-    }
-
-    /* Remove plotly internal margins */
-    .js-plotly-plot .plotly {
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-
-    /* Force SVG to take full width */
-    svg.main-svg {
-        width: 100% !important;
-    }
-
-    /* Completely disable chart interactions - use staticPlot instead */
-    .js-plotly-plot {
-        pointer-events: none !important;
-        -webkit-user-drag: none !important;
-        user-select: none !important;
-        overflow: hidden !important;
-    }
-
-    /* Prevent any chart movement via CSS transforms */
-    svg.main-svg {
-        transform: none !important;
-        transition: none !important;
-    }
-
-    g.draglayer {
-        display: none !important;
-    }
-
-    svg.main-svg {
-        outline: none !important;
-        -webkit-tap-highlight-color: transparent !important;
-    }
-
-
-    /* Make plotly containers full width, no margins */
-    div[data-testid="stPlotlyChart"] {
-        width: 100% !important;
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-
-    /* Remove container borders and padding on mobile */
-    div[data-testid="stContainer"] {
-        margin: 0 !important;
-        padding: 0 !important;
-        border: none !important;
-        border-radius: 0 !important;
-        background: transparent !important;
-    }
-
-    /* Remove borders from all elements */
-    div[class*="stContainer"] {
-        border: none !important;
-        border-radius: 0 !important;
-    }
-
-    /* Remove all vertical spacing */
-    div[class*="element-container"] {
-        padding: 0 !important;
-        margin: 0 !important;
-    }
-
-    /* Remove expandable container padding */
-    div[data-testid="stExpanderDetails"] {
-        padding: 0 !important;
-    }
-
-    /* Full-width selectbox and inputs */
-    div[data-testid="stSelectbox"],
-    div[data-testid="stTextInput"] {
-        width: 100% !important;
-    }
-
-    /* Tighten header */
-    h1 { font-size: 1.4rem !important; }
-
-    /* Remove margins from metric cards and containers */
-    div[data-testid="stMetric"] {
-        margin: 0 !important;
-        padding: 0 !important;
-        width: 100% !important;
-    }
-    div[class*="metric"] {
-        margin: 0 !important;
-        padding: 0 !important;
-        width: 100% !important;
-    }
-
-    /* Target parent containers of metrics */
-    div[data-testid="stHorizontalBlock"] div {
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-}
-</style>
-<script>
-// Prevent keyboard focus on charts (staticPlot already disables all interactions)
-document.addEventListener('focus', (e) => {
-  if (e.target.closest('.js-plotly-plot') || e.target.closest('svg.main-svg')) {
-    setTimeout(() => {
-      if (document.activeElement && document.activeElement !== document.body) {
-        document.activeElement.blur();
-      }
-    }, 0);
-  }
-}, true);
-</script>
-""", unsafe_allow_html=True)
+theme.register_template()
+st.markdown(theme.BASE_CSS + theme.MOBILE_CSS, unsafe_allow_html=True)
 
 # ── Store ─────────────────────────────────────────────────────────────────────
 
@@ -391,6 +236,10 @@ def _stock_rsi(ticker, weekly=False):
 def _stock_fcf_forecast_2026(ticker):
     return fetch_fcf_yield_forecast_2026(ticker)
 
+@st.cache_data(ttl=3600)
+def _earnings_calendar(tickers: tuple) -> dict:
+    return get_earnings_calendar(list(tickers))
+
 # ── Header ────────────────────────────────────────────────────────────────────
 
 col_title, col_btn = st.columns([5, 1])
@@ -521,11 +370,11 @@ def _apply_range_buttons(fig: go.Figure, df: pd.DataFrame,
     range_menu = dict(
         type="buttons", direction="right", showactive=True, active=0,
         x=1.0, xanchor="right", y=1.0, yanchor="bottom",
-        pad={"l": 0, "r": 0, "t": 4, "b": 4},
+        pad={"l": 0, "r": 0, "t": 6, "b": 6},
         buttons=buttons,
         bgcolor="rgba(248,249,250,0.95)",
-        bordercolor="#e5e7eb", borderwidth=1,
-        font=dict(size=10, color="#6b7280"),
+        bordercolor=theme.PALETTE["border"], borderwidth=1,
+        font=dict(size=11, color=theme.PALETTE["muted"]),
     )
     existing = list(fig.layout.updatemenus or [])
     existing.append(range_menu)
@@ -537,46 +386,14 @@ def _apply_range_buttons(fig: go.Figure, df: pd.DataFrame,
     return fig
 
 
-_PRO_CSS = """
-<style>
-.modebar-container { opacity: 0.25 !important; transition: opacity .2s; }
-.modebar-container:hover { opacity: 1 !important; }
-.sec-label {
-    font-size: 11px; font-weight: 700; color: #9ca3af;
-    text-transform: uppercase; letter-spacing: 1.2px;
-    padding-bottom: 8px; border-bottom: 1px solid #f3f4f6;
-    margin: 14px 0 4px 0;
-}
-</style>
-"""
+def _show_chart(fig: go.Figure, **kwargs):
+    """Render a figure with the econ_light template and the shared config.
 
-
-def _pro_layout(title: str, y_title: str, height: int = 300) -> dict:
-    return dict(
-        title=dict(text=f"<b>{title}</b>",
-                   font=dict(size=13, color="#111827"), y=0.97, yanchor="top"),
-        yaxis=dict(
-            title=dict(text=y_title, font=dict(size=11, color="#9ca3af")),
-            gridcolor="#f3f4f6", gridwidth=1,
-            tickfont=dict(size=11, color="#9ca3af"),
-            zeroline=False, showline=False,
-        ),
-        xaxis=dict(
-            gridcolor="#f3f4f6",
-            tickfont=dict(size=11, color="#9ca3af"),
-            showline=False,
-            rangeslider=dict(visible=False),
-        ),
-        plot_bgcolor="#ffffff",
-        paper_bgcolor="rgba(0,0,0,0)",
-        height=height,
-        margin=dict(l=58, r=24, t=50, b=40),
-        hovermode="x unified",
-        showlegend=False,
-        dragmode=False,
-        hoverlabel=dict(bgcolor="white", bordercolor="#e5e7eb",
-                        font=dict(size=12, color="#111827")),
-    )
+    theme=None is required — Streamlit's default theme="streamlit" would
+    override the Plotly template.
+    """
+    return st.plotly_chart(fig, width="stretch", theme=None,
+                           config=theme.PLOTLY_CONFIG, **kwargs)
 
 
 def _rsi_chart(daily_df: pd.DataFrame, weekly_df: pd.DataFrame) -> go.Figure:
@@ -585,64 +402,50 @@ def _rsi_chart(daily_df: pd.DataFrame, weekly_df: pd.DataFrame) -> go.Figure:
         fig.add_trace(go.Scatter(
             x=daily_df["date"], y=daily_df["rsi"],
             mode="lines", name="Daily",
-            line=dict(width=1.5, color="#8b5cf6"),
+            line=dict(width=1.5, color=theme.PALETTE["violet"]),
             hovertemplate="%{x|%b %d, %Y}: %{y:.1f}<extra>Daily</extra>",
         ))
     if not weekly_df.empty:
         fig.add_trace(go.Scatter(
             x=weekly_df["date"], y=weekly_df["rsi"],
             mode="lines", name="Weekly",
-            line=dict(width=2.5, color="#f59e0b"),
+            line=dict(width=2.5, color=theme.PALETTE["amber"]),
             hovertemplate="%{x|%b %d, %Y}: %{y:.1f}<extra>Weekly</extra>",
         ))
-    fig.add_hrect(y0=70, y1=100, fillcolor="rgba(239,68,68,0.04)", line_width=0)
-    fig.add_hrect(y0=0,  y1=30,  fillcolor="rgba(16,185,129,0.04)", line_width=0)
-    fig.add_hline(y=70, line_dash="dot", line_color="#ef4444", line_width=1,
+    fig.add_hrect(y0=70, y1=100, fillcolor=theme.rgba(theme.PALETTE["down"], 0.04), line_width=0)
+    fig.add_hrect(y0=0,  y1=30,  fillcolor=theme.rgba(theme.PALETTE["up"], 0.04), line_width=0)
+    fig.add_hline(y=70, line_dash="dot", line_color=theme.PALETTE["down"], line_width=1,
                   annotation_text="Overbought 70",
-                  annotation_font=dict(size=10, color="#ef4444"),
+                  annotation_font=dict(size=10, color=theme.PALETTE["down"]),
                   annotation_position="top right")
-    fig.add_hline(y=30, line_dash="dot", line_color="#10b981", line_width=1,
+    fig.add_hline(y=30, line_dash="dot", line_color=theme.PALETTE["up"], line_width=1,
                   annotation_text="Oversold 30",
-                  annotation_font=dict(size=10, color="#10b981"),
+                  annotation_font=dict(size=10, color=theme.PALETTE["up"]),
                   annotation_position="bottom right")
-    fig.update_layout(**_pro_layout("RSI — Daily vs Weekly (14-period)", "", height=260))
-    fig.update_layout(
-        yaxis=dict(range=[0, 100], gridcolor="#f3f4f6",
-                   tickfont=dict(size=11, color="#9ca3af"), zeroline=False, showline=False),
-        xaxis=dict(gridcolor="#f3f4f6",
-                   tickfont=dict(size=11, color="#9ca3af"), showline=False,
-                   rangeslider=dict(visible=False)),
-        legend=dict(orientation="h", x=0, y=1.08,
-                    font=dict(size=11, color="#6b7280"),
-                    bgcolor="rgba(0,0,0,0)"),
-        showlegend=True,
-        dragmode=False,
-    )
+    fig.update_layout(**theme.pro_layout("RSI — Daily vs Weekly (14-period)", "",
+                                         height=theme.CHART_HEIGHT["sm"]))
+    fig.update_layout(yaxis=dict(range=[0, 100]), showlegend=True)
     ref_df = daily_df if not daily_df.empty else weekly_df
     _apply_range_buttons(fig, ref_df, x_col="date", y_col="rsi", fixed_y=[0, 100])
     return fig
 
 
 def _line_chart(df: pd.DataFrame, title: str, yaxis: str,
-                x_col="date", y_col="value", color="#1f77b4",
-                zero_line=False) -> go.Figure:
+                x_col="date", y_col="value", color=None,
+                zero_line=False, fill_area=False) -> go.Figure:
+    color = color or theme.PALETTE["primary"]
     fig = go.Figure()
     if not df.empty:
         fig.add_trace(go.Scatter(
             x=df[x_col], y=df[y_col],
-            mode="lines", line=dict(width=2, color=color),
+            mode="lines", line=dict(width=1.8, color=color),
+            fill="tozeroy" if fill_area else None,
+            fillcolor=theme.rgba(color, 0.08) if fill_area else None,
             hovertemplate="%{x|%Y-%m-%d}: %{y:,.4g}<extra></extra>",
         ))
     if zero_line:
-        fig.add_hline(y=0, line_dash="dash", line_color="gray", line_width=1)
-    fig.update_layout(
-        title=dict(text=title, font=dict(size=13), y=0.97, yanchor="top"),
-        yaxis_title=yaxis,
-        height=320,
-        margin=dict(l=50, r=20, t=60, b=40),
-        hovermode="x unified",
-        showlegend=False,
-    )
+        fig.add_hline(y=0, line_dash="dash", line_color=theme.PALETTE["faint"], line_width=1)
+    fig.update_layout(**theme.pro_layout(title, yaxis, height=theme.CHART_HEIGHT["lg"]))
     _apply_range_buttons(fig, df, x_col, y_col)
     return fig
 
@@ -713,7 +516,8 @@ def render_capital_markets():
 
     sec_df = _sector_performance(tuple(SECTOR_ETFS.items()), selected_period)
     if not sec_df.empty:
-        colors = ["#2ecc71" if x >= 0 else "#e74c3c" for x in sec_df["pct_change"]]
+        colors = [theme.PALETTE["up"] if x >= 0 else theme.PALETTE["down"]
+                  for x in sec_df["pct_change"]]
         fig = go.Figure(go.Bar(
             x=sec_df["pct_change"],
             y=sec_df["name"],
@@ -721,23 +525,24 @@ def render_capital_markets():
             marker_color=colors,
             text=[f"{x:+.2f}%" for x in sec_df["pct_change"]],
             textposition="outside",
+            hovertemplate="%{y}: %{x:+.2f}%<extra></extra>",
         ))
         fig.update_layout(
-            height=420,
+            height=theme.CHART_HEIGHT["heatmap"],
             margin=dict(l=140, r=80, t=20, b=40),
             xaxis=dict(title=f"% Change ({period_labels[selected_period]})",
-                       zeroline=True, zerolinecolor="gray"),
+                       zeroline=True, zerolinecolor=theme.PALETTE["border"]),
             yaxis=dict(autorange="reversed"),
-            showlegend=False,
-            dragmode=False,
+            hovermode="y",
         )
         # on_select captures bar clicks; key resets selection when period changes
         event = st.plotly_chart(
             fig,
-            use_container_width=True,
+            width="stretch",
+            theme=None,
             on_select="rerun",
             key=f"sector_chart_{selected_period}",
-            config={"displayModeBar": False},
+            config=theme.PLOTLY_CONFIG,
         )
 
         # ── 5-year drill-down ─────────────────────────────────────────────────
@@ -755,9 +560,9 @@ def render_capital_markets():
             if not hist_df.empty:
                 fig5 = _line_chart(
                     hist_df, f"{sector_name} ({clicked_ticker})", "Price (USD)",
-                    x_col="date", y_col="close", color="#5C6BC0",
+                    x_col="date", y_col="close", fill_area=True,
                 )
-                st.plotly_chart(fig5, use_container_width=True, config={"displayModeBar": False, "staticPlot": False, "responsive": True})
+                _show_chart(fig5)
             else:
                 st.warning(f"Could not load 5-year data for {sector_name}.")
         else:
@@ -810,18 +615,13 @@ def render_market_leading_charts():
     c1, c2 = st.columns(2)
     with c1:
         sp_df = _historical("^GSPC")
-        st.plotly_chart(
-            _line_chart(sp_df, "S&P 500", "Price", x_col="date", y_col="close", color="#2196F3"),
-            use_container_width=True,
-            config={"displayModeBar": False},
-        )
+        _show_chart(_line_chart(sp_df, "S&P 500", "Price",
+                                x_col="date", y_col="close", fill_area=True))
     with c2:
         vix_df = _historical("^VIX")
-        st.plotly_chart(
-            _line_chart(vix_df, "VIX (Volatility)", "Index", x_col="date", y_col="close", color="#FF5722"),
-            use_container_width=True,
-            config={"displayModeBar": False},
-        )
+        _show_chart(_line_chart(vix_df, "VIX (Volatility)", "Index",
+                                x_col="date", y_col="close",
+                                color=theme.PALETTE["amber"]))
 
     c3, c4 = st.columns(2)
     df10 = store.get_observations("DGS10")
@@ -831,31 +631,24 @@ def render_market_leading_charts():
         if not df10.empty:
             fig_yc.add_trace(go.Scatter(
                 x=df10["date"], y=df10["value"],
-                mode="lines", name="10-Year", line=dict(color="#1565C0", width=2),
+                mode="lines", name="10-Year",
+                line=dict(color=theme.PALETTE["primary"], width=1.8),
                 hovertemplate="%{x|%Y-%m-%d}: %{y:.2f}%<extra>10Y</extra>",
             ))
         if not df2.empty:
             fig_yc.add_trace(go.Scatter(
                 x=df2["date"], y=df2["value"],
-                mode="lines", name="2-Year", line=dict(color="#EF6C00", width=2),
+                mode="lines", name="2-Year",
+                line=dict(color=theme.PALETTE["amber"], width=1.8),
                 hovertemplate="%{x|%Y-%m-%d}: %{y:.2f}%<extra>2Y</extra>",
             ))
-        fig_yc.update_layout(
-            title=dict(text="Treasury Yield Curve (10Y vs 2Y)", font=dict(size=13), y=0.97, yanchor="top"),
-            yaxis_title="Yield (%)",
-            height=320,
-            margin=dict(l=50, r=20, t=60, b=40),
-            hovermode="x unified",
-            legend=dict(x=0.01, y=0.92),
-        )
+        fig_yc.update_layout(**theme.pro_layout("Treasury Yield Curve (10Y vs 2Y)",
+                                                "Yield (%)",
+                                                height=theme.CHART_HEIGHT["lg"]))
+        fig_yc.update_layout(showlegend=True)
         combined_yc = pd.concat([df10, df2]).dropna(subset=["value"])
         _apply_range_buttons(fig_yc, combined_yc, "date", "value")
-        st.plotly_chart(fig_yc, use_container_width=True, config={
-        "displayModeBar": False,
-        "scrollZoom": False,
-        "doubleClick": False,
-        "draggable": False
-    })
+        _show_chart(fig_yc)
 
     with c4:
         if not df10.empty and not df2.empty:
@@ -865,19 +658,16 @@ def render_market_leading_charts():
             spread.columns = ["date", "value"]
             fig_sp = go.Figure(go.Bar(
                 x=spread["date"], y=spread["value"],
-                marker_color=["#2ecc71" if v >= 0 else "#e74c3c" for v in spread["value"]],
+                marker_color=[theme.PALETTE["up"] if v >= 0 else theme.PALETTE["down"]
+                              for v in spread["value"]],
                 hovertemplate="%{x|%Y-%m-%d}: %{y:.2f}%<extra></extra>",
             ))
-            fig_sp.add_hline(y=0, line_dash="dash", line_color="gray", line_width=1)
-            fig_sp.update_layout(
-                title=dict(text="Yield Spread (10Y − 2Y)", font=dict(size=13), y=0.97, yanchor="top"),
-                yaxis_title="Spread (%)",
-                height=320,
-                margin=dict(l=50, r=20, t=60, b=40),
-                showlegend=False,
-            )
+            fig_sp.add_hline(y=0, line_dash="dash", line_color=theme.PALETTE["faint"], line_width=1)
+            fig_sp.update_layout(**theme.pro_layout("Yield Spread (10Y − 2Y)",
+                                                    "Spread (%)",
+                                                    height=theme.CHART_HEIGHT["lg"]))
             _apply_range_buttons(fig_sp, spread, "date", "value")
-            st.plotly_chart(fig_sp, use_container_width=True, config={"displayModeBar": False, "staticPlot": False, "responsive": True})
+            _show_chart(fig_sp)
         else:
             st.info("Sync FRED data to see the yield spread chart.")
 
@@ -1018,10 +808,8 @@ def render_indicator_group(group_key: str, series_dict: dict) -> None:
         for col, sid in zip(chart_cols, pair):
             info = series_dict[sid]
             df = store.get_observations(sid)
-            col.plotly_chart(
-                _line_chart(df, info["name"], info["unit"]),
-                use_container_width=True,
-            )
+            with col:
+                _show_chart(_line_chart(df, info["name"], info["unit"]))
 
 
 def render_macro():
@@ -1123,8 +911,8 @@ _CARD_CSS = """
 .stock-name   { font-size: 26px; font-weight: 700; margin: 0 0 6px 0; }
 .badge        { display: inline-block; padding: 3px 10px; border-radius: 20px;
                 font-size: 11px; font-weight: 600; margin-right: 6px; }
-.badge-sector   { background: rgba(33,150,243,0.12); color: #1565C0; }
-.badge-industry { background: rgba(156,39,176,0.10); color: #6a1b9a; }
+.badge-sector   { background: rgba(37,99,235,0.10); color: #2563eb; }
+.badge-industry { background: rgba(124,58,237,0.10); color: #7c3aed; }
 .metric-grid  { display: flex; gap: 10px; margin: 14px 0; }
 .mgroup       { flex: 1; border-radius: 10px; padding: 13px 15px;
                 border-top: 3px solid var(--gc); background: rgba(128,128,128,0.06); }
@@ -1135,8 +923,8 @@ _CARD_CSS = """
 .mlabel       { font-size: 11px; color: #888; margin-bottom: 3px; white-space: nowrap; }
 .mval         { font-size: 19px; font-weight: 600; line-height: 1.15; }
 .mval-sm      { font-size: 14px; font-weight: 600; line-height: 1.3; }
-.pos { color: #2ecc71; } .neg { color: #e74c3c; }
-.ob  { color: #e74c3c; } .os  { color: #2ecc71; }
+.pos { color: #059669; } .neg { color: #dc2626; }
+.ob  { color: #dc2626; } .os  { color: #059669; }
 .price-item { display: inline; }
 .price-separator { display: inline; }
 
@@ -1257,7 +1045,7 @@ def _stock_metric_cards(info: dict, fcf_yield, curr_rsi_d, curr_rsi_w, fcf_forec
             pm_price = premarket_data["price"]
             pm_change = premarket_data.get("change", 0)
             pm_change_pct = premarket_data.get("change_pct", 0)
-            pm_color = "#2ecc71" if pm_change >= 0 else "#e74c3c"
+            pm_color = theme.PALETTE["up"] if pm_change >= 0 else theme.PALETTE["down"]
             pm_arrow = "▲" if pm_change >= 0 else "▼"
             price_parts.append(f'<div class="price-item"><span style="font-size:14px; color:#9ca3af;">Pre-Market:</span> <span style="font-size:18px; color:{pm_color};">${pm_price:.2f} {pm_arrow} {abs(pm_change_pct):.2f}%</span></div>')
 
@@ -1266,7 +1054,7 @@ def _stock_metric_cards(info: dict, fcf_yield, curr_rsi_d, curr_rsi_w, fcf_forec
             close_price = price_data["price"]
             close_change = price_data.get("change", 0)
             close_change_pct = price_data.get("change_pct", 0)
-            close_color = "#2ecc71" if close_change >= 0 else "#e74c3c"
+            close_color = theme.PALETTE["up"] if close_change >= 0 else theme.PALETTE["down"]
             close_arrow = "▲" if close_change >= 0 else "▼"
             price_parts.append(f'<div class="price-item"><span style="font-size:14px; color:#9ca3af;">Close:</span> <span style="font-size:18px; color:{close_color};">${close_price:.2f} {close_arrow} {abs(close_change_pct):.2f}%</span></div>')
 
@@ -1287,7 +1075,7 @@ def _stock_metric_cards(info: dict, fcf_yield, curr_rsi_d, curr_rsi_w, fcf_forec
 </div>
 <div class="metric-grid">
 
-  <div class="mgroup" style="--gc:#2196F3">
+  <div class="mgroup" style="--gc:#2563eb">
     <div class="mgroup-title">Valuation</div>
     <div class="mpair">
       <div class="mitem">
@@ -1301,7 +1089,7 @@ def _stock_metric_cards(info: dict, fcf_yield, curr_rsi_d, curr_rsi_w, fcf_forec
     </div>
   </div>
 
-  <div class="mgroup" style="--gc:#4CAF50">
+  <div class="mgroup" style="--gc:#059669">
     <div class="mgroup-title">Earnings &amp; Cash Flow</div>
     <div class="mpair">
       <div class="mitem">
@@ -1316,7 +1104,7 @@ def _stock_metric_cards(info: dict, fcf_yield, curr_rsi_d, curr_rsi_w, fcf_forec
     {_get_forecast_html_block(fcf_forecast) if fcf_forecast else ''}
   </div>
 
-  <div class="mgroup" style="--gc:#FF9800">
+  <div class="mgroup" style="--gc:#d97706">
     <div class="mgroup-title">Size &amp; Price</div>
     <div class="mpair">
       <div class="mitem">
@@ -1330,7 +1118,7 @@ def _stock_metric_cards(info: dict, fcf_yield, curr_rsi_d, curr_rsi_w, fcf_forec
     </div>
   </div>
 
-  <div class="mgroup" style="--gc:#E91E63">
+  <div class="mgroup" style="--gc:#db2777">
     <div class="mgroup-title">Dividend Income</div>
     <div class="mpair">
       <div class="mitem">
@@ -1344,7 +1132,7 @@ def _stock_metric_cards(info: dict, fcf_yield, curr_rsi_d, curr_rsi_w, fcf_forec
     </div>
   </div>
 
-  <div class="mgroup" style="--gc:#9C27B0">
+  <div class="mgroup" style="--gc:#7c3aed">
     <div class="mgroup-title">Momentum (RSI 14)</div>
     <div class="mpair">
       <div class="mitem">
@@ -1368,7 +1156,7 @@ def render_single_stock(ticker: str) -> None:
     st.markdown("""
     <style>
     [data-testid="stButton"] button[key="remove_button"] {
-        background-color: #ef4444 !important;
+        background-color: #dc2626 !important;
         color: white !important;
     }
     </style>
@@ -1411,8 +1199,6 @@ def render_single_stock(ticker: str) -> None:
 
     pe = info.get("pe_ratio")
 
-    st.markdown(_PRO_CSS, unsafe_allow_html=True)
-
     # ── Price & Technical Analysis ────────────────────────────────────────────
     st.markdown('<div class="sec-label">Price &amp; Technical Analysis</div>',
                 unsafe_allow_html=True)
@@ -1435,8 +1221,8 @@ def render_single_stock(ticker: str) -> None:
         fig_price.add_trace(go.Scatter(
             x=price_df["date"], y=price_df["close"],
             mode="lines",
-            line=dict(color="#2563eb", width=2),
-            fill="tozeroy", fillcolor="rgba(37,99,235,0.08)",
+            line=dict(color=theme.PALETTE["primary"], width=1.8),
+            fill="tozeroy", fillcolor=theme.rgba(theme.PALETTE["primary"], 0.08),
             hovertemplate="%{x|%b %d, %Y} — $%{y:,.2f}<extra></extra>",
         ))
     elif chart_type == "Candle" and not ohlcv_df.empty:
@@ -1444,13 +1230,14 @@ def render_single_stock(ticker: str) -> None:
             x=ohlcv_df["date"],
             open=ohlcv_df["open"], high=ohlcv_df["high"],
             low=ohlcv_df["low"],   close=ohlcv_df["close"],
-            increasing_line_color="#10b981", increasing_fillcolor="#10b981",
-            decreasing_line_color="#ef4444", decreasing_fillcolor="#ef4444",
+            increasing_line_color=theme.PALETTE["up"],
+            increasing_fillcolor=theme.PALETTE["up"],
+            decreasing_line_color=theme.PALETTE["down"],
+            decreasing_fillcolor=theme.PALETTE["down"],
         ))
 
-    fig_price.update_layout(**_pro_layout("Stock Price (5Y)", "USD ($)", height=300))
+    fig_price.update_layout(**theme.pro_layout("Stock Price (5Y)", "USD ($)"))
     fig_price.update_layout(
-        dragmode=False,
         xaxis=dict(
             rangebreaks=[
                 dict(bounds=["sat", "mon"]),  # Hide weekends (Saturday to Monday)
@@ -1478,14 +1265,10 @@ def render_single_stock(ticker: str) -> None:
         ("All", None),
     ]
     _apply_range_buttons(fig_price, price_df, "date", "close", timeframes=timeframes)
-    st.plotly_chart(fig_price, use_container_width=True, config={
-        "displayModeBar": False,
-        "staticPlot": False,
-        "responsive": True
-    })
+    _show_chart(fig_price)
 
     with st.container(border=False):
-        st.plotly_chart(_rsi_chart(rsi_daily, rsi_weekly), use_container_width=True, config={"displayModeBar": False, "staticPlot": False, "responsive": True})
+        _show_chart(_rsi_chart(rsi_daily, rsi_weekly))
 
     # ── Fundamentals ─────────────────────────────────────────────────────────
     st.markdown('<div class="sec-label">Fundamentals</div>', unsafe_allow_html=True)
@@ -1508,8 +1291,8 @@ def render_single_stock(ticker: str) -> None:
                     fig_pe.add_trace(go.Scatter(
                         x=[str(y) for y in valid_years], y=valid_pe,
                         mode="lines+markers",
-                        line=dict(color="#f59e0b", width=2),
-                        marker=dict(size=7, color="#f59e0b",
+                        line=dict(color=theme.PALETTE["amber"], width=1.8),
+                        marker=dict(size=7, color=theme.PALETTE["amber"],
                                     line=dict(width=1.5, color="white")),
                         hovertemplate="%{x}: %{y:.1f}×<extra></extra>",
                     ))
@@ -1517,28 +1300,26 @@ def render_single_stock(ticker: str) -> None:
                     fig_pe.add_trace(go.Scatter(
                         x=[str(y) for y in loss_years], y=[0] * len(loss_years),
                         mode="markers+text",
-                        marker=dict(symbol="x-thin", size=13, color="#ef4444",
+                        marker=dict(symbol="x-thin", size=13, color=theme.PALETTE["down"],
                                     line=dict(width=2)),
                         text=["Loss"] * len(loss_years), textposition="top center",
                         hovertemplate="%{x}: Net Loss<extra></extra>",
                         showlegend=False,
                     ))
                 if pe is not None:
-                    fig_pe.add_hline(y=pe, line_dash="dot", line_color="#d1d5db",
+                    fig_pe.add_hline(y=pe, line_dash="dot",
+                                     line_color=theme.PALETTE["border"],
                                      line_width=1,
                                      annotation_text=f"Now: {pe:.1f}×",
-                                     annotation_font=dict(size=10, color="#9ca3af"),
+                                     annotation_font=dict(size=10, color=theme.PALETTE["faint"]),
                                      annotation_position="top right")
-                fig_pe.update_layout(**_pro_layout("P/E Ratio — Annual", "P/E (×)"))
+                fig_pe.update_layout(**theme.pro_layout("P/E Ratio — Annual", "P/E (×)"))
                 fig_pe.update_layout(
-                    yaxis=dict(rangemode="tozero", gridcolor="#f3f4f6",
-                               tickfont=dict(size=11, color="#9ca3af"),
-                               zeroline=False, showline=False),
+                    yaxis=dict(rangemode="tozero"),
                     xaxis=dict(type="category", categoryorder="array",
-                               categoryarray=all_year_strs, gridcolor="#f3f4f6",
-                               tickfont=dict(size=11, color="#9ca3af"), showline=False),
+                               categoryarray=all_year_strs),
                 )
-                st.plotly_chart(fig_pe, use_container_width=True, config={"displayModeBar": False, "staticPlot": False, "responsive": True})
+                _show_chart(fig_pe)
                 if loss_years:
                     st.caption(f"✕ Loss year(s): {', '.join(str(y) for y in sorted(loss_years))}")
             else:
@@ -1549,19 +1330,13 @@ def render_single_stock(ticker: str) -> None:
             if not rev_df.empty:
                 fig_rev = go.Figure(go.Bar(
                     x=rev_df["year"].astype(str), y=rev_df["revenue"],
-                    marker=dict(color="#10b981", opacity=0.85, line=dict(width=0)),
+                    marker=dict(color=theme.PALETTE["up"], opacity=0.85, line=dict(width=0)),
                     customdata=rev_df["revenue"],
                     hovertemplate="%{x}: $%{customdata:.2f}B<extra></extra>",
                 ))
-                fig_rev.update_layout(**_pro_layout("Annual Revenue", "USD (B)"))
-                fig_rev.update_layout(
-                    xaxis=dict(type="category", gridcolor="#f3f4f6",
-                               tickfont=dict(size=11, color="#9ca3af"), showline=False),
-                    yaxis=dict(gridcolor="#f3f4f6",
-                               tickfont=dict(size=11, color="#9ca3af"),
-                               zeroline=False, showline=False),
-                )
-                st.plotly_chart(fig_rev, use_container_width=True, config={"displayModeBar": False, "staticPlot": False, "responsive": True})
+                fig_rev.update_layout(**theme.pro_layout("Annual Revenue", "USD (B)"))
+                fig_rev.update_layout(xaxis=dict(type="category"))
+                _show_chart(fig_rev)
             else:
                 st.info("Revenue data unavailable.")
 
@@ -1573,10 +1348,10 @@ def render_single_stock(ticker: str) -> None:
                 fig_fcf = go.Figure(go.Scatter(
                     x=valid["year"].astype(str), y=valid["fcf_yield"],
                     mode="lines+markers", name="Historical",
-                    line=dict(color="#8b5cf6", width=2),
+                    line=dict(color=theme.PALETTE["violet"], width=1.8),
                     marker=dict(
                         size=8,
-                        color=["#10b981" if v >= 0 else "#ef4444"
+                        color=[theme.PALETTE["up"] if v >= 0 else theme.PALETTE["down"]
                                for v in valid["fcf_yield"]],
                         line=dict(width=1.5, color="white"),
                     ),
@@ -1593,31 +1368,24 @@ def render_single_stock(ticker: str) -> None:
                         x=[str(last_year), "2026"],
                         y=[last_yield, fcf_forecast["fcf_yield_2026"]],
                         mode="lines", name="Projection",
-                        line=dict(color="#f59e0b", width=2, dash="dot"),
+                        line=dict(color=theme.PALETTE["amber"], width=1.8, dash="dot"),
                         hovertemplate="%{x} — Yield: %{y:.1f}%<extra></extra>",
                     ))
 
                     fig_fcf.add_trace(go.Scatter(
                         x=["2026"], y=[fcf_forecast["fcf_yield_2026"]],
                         mode="markers", name="2026 Forecast",
-                        marker=dict(size=12, color="#f59e0b",
+                        marker=dict(size=12, color=theme.PALETTE["amber"],
                                    symbol="diamond",
                                    line=dict(width=2, color="white")),
                         hovertemplate="2026 Forecast — Yield: %{y:.1f}%<extra></extra>",
                     ))
 
-                fig_fcf.add_hline(y=0, line_dash="dot", line_color="#e5e7eb", line_width=1)
-                fig_fcf.update_layout(**_pro_layout("FCF Yield — Annual", "%"))
-                fig_fcf.update_layout(
-                    xaxis=dict(type="category", gridcolor="#f3f4f6",
-                               tickfont=dict(size=11, color="#9ca3af"), showline=False),
-                    yaxis=dict(gridcolor="#f3f4f6",
-                               tickfont=dict(size=11, color="#9ca3af"),
-                               zeroline=False, showline=False),
-                    showlegend=False,
-                    dragmode=False,
-                )
-                st.plotly_chart(fig_fcf, use_container_width=True, config={"displayModeBar": False, "staticPlot": False, "responsive": True})
+                fig_fcf.add_hline(y=0, line_dash="dot",
+                                  line_color=theme.PALETTE["border"], line_width=1)
+                fig_fcf.update_layout(**theme.pro_layout("FCF Yield — Annual", "%"))
+                fig_fcf.update_layout(xaxis=dict(type="category"))
+                _show_chart(fig_fcf)
             else:
                 st.info("FCF Yield data unavailable.")
 
@@ -1629,27 +1397,13 @@ def render_single_stock(ticker: str) -> None:
             fig_div = go.Figure(go.Scatter(
                 x=div_hist["date"], y=div_hist["dividend_yield"],
                 mode="lines+markers", name="Dividend Yield",
-                line=dict(color="#ec4899", width=2),
-                marker=dict(size=6, color="#ec4899",
+                line=dict(color=theme.PALETTE["pink"], width=1.8),
+                marker=dict(size=6, color=theme.PALETTE["pink"],
                            line=dict(width=1.5, color="white")),
                 hovertemplate="%{x|%b %Y} — Yield: %{y:.2f}%<extra></extra>",
             ))
-            fig_div.update_layout(**_pro_layout("Dividend Yield — Historical", "%"))
-            fig_div.update_layout(
-                xaxis=dict(gridcolor="#f3f4f6",
-                          tickfont=dict(size=11, color="#9ca3af"), showline=False),
-                yaxis=dict(gridcolor="#f3f4f6",
-                          tickfont=dict(size=11, color="#9ca3af"),
-                          zeroline=False, showline=False),
-                showlegend=False,
-                dragmode=False,
-            )
-            st.plotly_chart(fig_div, use_container_width=True, config={
-                "displayModeBar": False,
-                "scrollZoom": False,
-                "doubleClick": False,
-                "draggable": False
-            })
+            fig_div.update_layout(**theme.pro_layout("Dividend Yield — Historical", "%"))
+            _show_chart(fig_div)
 
 
 def render_stock_tracing() -> None:
@@ -1693,7 +1447,7 @@ def render_stock_tracing() -> None:
 
     # ── Earnings Calendar ─────────────────────────────────────────────────────
     with st.expander("📅 Earnings Calendar", expanded=False):
-        earnings_cal = get_earnings_calendar(tickers)
+        earnings_cal = _earnings_calendar(tuple(tickers))
         calendar_text = format_earnings_for_display(earnings_cal)
         st.markdown(calendar_text)
         st.caption("*Auto-updates after earnings releases at 9:30 AM & 6:00 PM ET*")
@@ -1758,9 +1512,9 @@ def render_stock_tracing() -> None:
         st.divider()
         st.markdown(f"### {info.get('name', t)} ({t})")
         render_single_stock(t)
-
-    st.divider()
-    render_single_stock(selected_ticker)
+    else:
+        st.divider()
+        render_single_stock(selected_ticker)
 
 
 # ── Main tabs ─────────────────────────────────────────────────────────────────

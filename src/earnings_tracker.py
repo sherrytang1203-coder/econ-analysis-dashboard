@@ -114,8 +114,14 @@ def get_earnings_calendar(tickers: list) -> dict:
 
     for ticker in tickers:
         try:
-            next_earnings = get_next_earnings(ticker)
-            last_earnings = get_last_earnings(ticker)
+            # Fetch the date list once and derive next/last from it —
+            # get_next_earnings/get_last_earnings would each re-fetch.
+            dates = [d.date() if hasattr(d, "date") else d
+                     for d in get_earnings_dates(ticker)]
+            future = [d for d in dates if d >= today]
+            past   = [d for d in dates if d < today]
+            next_earnings = min(future) if future else None
+            last_earnings = max(past) if past else None
 
             if next_earnings:
                 days_until = (next_earnings - today).days
