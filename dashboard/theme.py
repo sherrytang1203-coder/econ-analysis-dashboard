@@ -49,6 +49,12 @@ def rgba(hex_color: str, alpha: float) -> str:
     return f"rgba({int(h[0:2], 16)},{int(h[2:4], 16)},{int(h[4:6], 16)},{alpha})"
 
 
+def gradient(color: str) -> dict:
+    """Apple Stocks-style vertical fade under a line (strong at line, clear at bottom)."""
+    return dict(type="vertical",
+                colorscale=[[0, rgba(color, 0.0)], [1, rgba(color, 0.22)]])
+
+
 def register_template() -> None:
     axis = dict(
         gridcolor=PALETTE["grid"], gridwidth=1,
@@ -58,7 +64,8 @@ def register_template() -> None:
     )
     pio.templates["econ_light"] = go.layout.Template(layout=go.Layout(
         font=dict(family=FONT_FAMILY, size=12, color=PALETTE["text"]),
-        title=dict(font=dict(size=13, color=PALETTE["text"]), y=0.97, yanchor="top"),
+        title=dict(font=dict(size=13, color=PALETTE["text"]),
+                   x=0.02, xanchor="left", y=0.97, yanchor="top"),
         plot_bgcolor=PALETTE["bg"],
         paper_bgcolor="rgba(0,0,0,0)",
         colorway=COLORWAY,
@@ -67,26 +74,45 @@ def register_template() -> None:
         dragmode=False,
         hoverlabel=dict(bgcolor="white", bordercolor=PALETTE["border"],
                         font=dict(size=12, color=PALETTE["text"], family=FONT_FAMILY)),
-        legend=dict(orientation="h", x=0, y=1.06, yanchor="bottom",
+        legend=dict(orientation="h", x=1, xanchor="right", y=1.06, yanchor="bottom",
                     font=dict(size=11, color=PALETTE["muted"]),
                     bgcolor="rgba(0,0,0,0)"),
         showlegend=False,
         xaxis=dict(**axis,
                    rangeslider=dict(visible=False),
-                   # styles the vertical line drawn by "x unified" hover
+                   nticks=6,
+                   # styles the scrub line drawn by "x unified" hover (Apple-style)
                    showspikes=True, spikemode="across", spikethickness=1,
-                   spikedash="dot", spikecolor=PALETTE["border"]),
+                   spikedash="solid", spikecolor=PALETTE["faint"]),
         yaxis=axis,
     ))
     pio.templates.default = "econ_light"
 
 
-def pro_layout(title: str, y_title: str = "", height: int = CHART_HEIGHT["md"]) -> dict:
-    """Per-chart layout bits; everything else comes from the template."""
+def pro_layout(title: str, y_title: str = "", height: int = CHART_HEIGHT["md"],
+               edge: bool = False) -> dict:
+    """Per-chart layout bits; everything else comes from the template.
+
+    edge=True gives the Apple Stocks look: near-zero side margins with the
+    y-axis labels drawn inside the plot on the right, and the unit folded
+    into the title instead of an axis label.
+    """
+    title_txt = f"<b>{title}</b>"
+    if edge:
+        if y_title:
+            title_txt += (f"  <span style='font-size:11px;"
+                          f"color:{PALETTE['faint']}'>{y_title}</span>")
+        return dict(
+            title=dict(text=title_txt),
+            height=height,
+            margin=dict(l=8, r=8, t=48, b=36),
+            yaxis=dict(side="right", ticklabelposition="inside"),
+        )
     return dict(
-        title=dict(text=f"<b>{title}</b>"),
+        title=dict(text=title_txt),
         yaxis_title=y_title,
         height=height,
+        margin=dict(l=52, r=12, t=48, b=36),
     )
 
 
@@ -113,14 +139,19 @@ MOBILE_CSS = """
         max-width: 100% !important;
     }
 
-    /* Stack all columns vertically */
+    /* Stack all columns vertically at full width.
+       Streamlit >=1.37 uses data-testid="stColumn"; "column" kept for
+       older versions — without the stColumn selector, stacked columns
+       keep their desktop flex-basis and charts render half-width. */
     div[data-testid="stHorizontalBlock"] {
         flex-direction: column !important;
     }
+    div[data-testid="stColumn"],
     div[data-testid="column"] {
         width: 100% !important;
         flex: 1 1 100% !important;
         min-width: 100% !important;
+        max-width: 100% !important;
     }
 
     /* Make tab bar scroll horizontally */

@@ -332,8 +332,16 @@ def _delta_str(latest: float, prev: float) -> str | None:
 def _apply_range_buttons(fig: go.Figure, df: pd.DataFrame,
                          x_col: str = "date", y_col: str = "value",
                          fixed_y: list | None = None,
-                         timeframes: list[tuple] | None = None) -> go.Figure:
-    """Add range buttons that rescale both axes. Defaults to first timeframe."""
+                         timeframes: list[tuple] | None = None,
+                         perf_colors: bool = False) -> go.Figure:
+    """Apple Stocks-style segmented timeframe control below the chart.
+
+    Buttons rescale both axes client-side (no rerun). With perf_colors=True
+    the line and its gradient recolor green/red to match the selected
+    period's performance — requires a single scatter trace.
+    """
+    if df.empty:
+        return fig
     today = pd.Timestamp.today().normalize()
     if timeframes is None:
         timeframes = [
@@ -344,16 +352,26 @@ def _apply_range_buttons(fig: go.Figure, df: pd.DataFrame,
         ]
     cutoffs = timeframes
 
+    def _sub(start):
+        sub = df if start is None else df[df[x_col] >= start]
+        return sub[y_col].dropna()
+
     def _y(start):
         if fixed_y:
             return fixed_y
-        sub = (df[df[x_col] >= start][y_col].dropna()
-               if start is not None else df[y_col].dropna())
+        sub = _sub(start)
         if sub.empty:
             return [0, 1]
         lo, hi = float(sub.min()), float(sub.max())
         pad = max((hi - lo) * 0.08, abs(hi) * 0.01, 1e-6)
         return [lo - pad, hi + pad]
+
+    def _perf(start):
+        sub = _sub(start)
+        if len(sub) < 2:
+            return theme.PALETTE["primary"]
+        return (theme.PALETTE["up"] if float(sub.iloc[-1]) >= float(sub.iloc[0])
+                else theme.PALETTE["down"])
 
     buttons, default_x0 = [], None
     for i, (label, start) in enumerate(cutoffs):
@@ -361,28 +379,42 @@ def _apply_range_buttons(fig: go.Figure, df: pd.DataFrame,
                else (df[x_col].min().isoformat() if not df.empty else "2000-01-01"))
         if i == 0:
             default_x0 = x0
-        buttons.append(dict(
-            label=label, method="relayout",
-            args=[{"xaxis.range": [x0, today.isoformat()],
-                   "yaxis.range": _y(start)}],
-        ))
+        layout_args = {"xaxis.range": [x0, today.isoformat()],
+                       "yaxis.range": _y(start)}
+        if perf_colors:
+            c = _perf(start)
+            buttons.append(dict(
+                label=label, method="update",
+                args=[{"line.color": [c], "fillgradient": [theme.gradient(c)]},
+                      layout_args],
+            ))
+        else:
+            buttons.append(dict(label=label, method="relayout", args=[layout_args]))
 
     range_menu = dict(
         type="buttons", direction="right", showactive=True, active=0,
-        x=1.0, xanchor="right", y=1.0, yanchor="bottom",
-        pad={"l": 0, "r": 0, "t": 6, "b": 6},
+        x=0.5, xanchor="center", y=-0.16, yanchor="top",
+        pad={"l": 4, "r": 4, "t": 8, "b": 8},
         buttons=buttons,
-        bgcolor="rgba(248,249,250,0.95)",
-        bordercolor=theme.PALETTE["border"], borderwidth=1,
-        font=dict(size=11, color=theme.PALETTE["muted"]),
+        bgcolor="rgba(243,244,246,0.9)",
+        bordercolor="rgba(0,0,0,0)", borderwidth=0,
+        font=dict(size=12, color=theme.PALETTE["muted"]),
     )
     existing = list(fig.layout.updatemenus or [])
     existing.append(range_menu)
     fig.update_layout(
         updatemenus=existing,
+        # the segmented control sits in the bottom margin; grow both so the
+        # plot area keeps its original height
+        margin_b=84,
+        height=(fig.layout.height or theme.CHART_HEIGHT["md"]) + 48,
         xaxis=dict(range=[default_x0, today.isoformat()]),
         yaxis=dict(range=_y(cutoffs[0][1])),
     )
+    if perf_colors and fig.data:
+        c0 = _perf(cutoffs[0][1])
+        fig.update_traces(line_color=c0, fillgradient=theme.gradient(c0),
+                          selector=dict(type="scatter"))
     return fig
 
 
@@ -422,8 +454,8 @@ def _rsi_chart(daily_df: pd.DataFrame, weekly_df: pd.DataFrame) -> go.Figure:
                   annotation_text="Oversold 30",
                   annotation_font=dict(size=10, color=theme.PALETTE["up"]),
                   annotation_position="bottom right")
-    fig.update_layout(**theme.pro_layout("RSI — Daily vs Weekly (14-period)", "",
-                                         height=theme.CHART_HEIGHT["sm"]))
+    fig.update_layout(**theme.pro_layout("RSI (14)", "",
+                                         height=theme.CHART_HEIGHT["sm"], edge=True))
     fig.update_layout(yaxis=dict(range=[0, 100]), showlegend=True)
     ref_df = daily_df if not daily_df.empty else weekly_df
     _apply_range_buttons(fig, ref_df, x_col="date", y_col="rsi", fixed_y=[0, 100])
@@ -432,21 +464,28 @@ def _rsi_chart(daily_df: pd.DataFrame, weekly_df: pd.DataFrame) -> go.Figure:
 
 def _line_chart(df: pd.DataFrame, title: str, yaxis: str,
                 x_col="date", y_col="value", color=None,
-                zero_line=False, fill_area=False) -> go.Figure:
+                zero_line=False, fill_area=True, perf_colors=False) -> go.Figure:
     color = color or theme.PALETTE["primary"]
     fig = go.Figure()
     if not df.empty:
         fig.add_trace(go.Scatter(
             x=df[x_col], y=df[y_col],
-            mode="lines", line=dict(width=1.8, color=color),
+            mode="lines", line=dict(width=2, color=color),
             fill="tozeroy" if fill_area else None,
-            fillcolor=theme.rgba(color, 0.08) if fill_area else None,
+            fillgradient=theme.gradient(color) if fill_area else None,
             hovertemplate="%{x|%Y-%m-%d}: %{y:,.4g}<extra></extra>",
         ))
     if zero_line:
         fig.add_hline(y=0, line_dash="dash", line_color=theme.PALETTE["faint"], line_width=1)
-    fig.update_layout(**theme.pro_layout(title, yaxis, height=theme.CHART_HEIGHT["lg"]))
-    _apply_range_buttons(fig, df, x_col, y_col)
+    fig.update_layout(**theme.pro_layout(title, yaxis, height=theme.CHART_HEIGHT["lg"],
+                                         edge=True))
+    if df.empty:
+        fig.add_annotation(text="No data — sync FRED data to populate",
+                           xref="paper", yref="paper", x=0.5, y=0.5,
+                           xanchor="center", yanchor="middle", showarrow=False,
+                           font=dict(size=12, color=theme.PALETTE["faint"]))
+        fig.update_layout(xaxis=dict(visible=False), yaxis=dict(visible=False))
+    _apply_range_buttons(fig, df, x_col, y_col, perf_colors=perf_colors)
     return fig
 
 
@@ -560,7 +599,7 @@ def render_capital_markets():
             if not hist_df.empty:
                 fig5 = _line_chart(
                     hist_df, f"{sector_name} ({clicked_ticker})", "Price (USD)",
-                    x_col="date", y_col="close", fill_area=True,
+                    x_col="date", y_col="close", perf_colors=True,
                 )
                 _show_chart(fig5)
             else:
@@ -616,7 +655,7 @@ def render_market_leading_charts():
     with c1:
         sp_df = _historical("^GSPC")
         _show_chart(_line_chart(sp_df, "S&P 500", "Price",
-                                x_col="date", y_col="close", fill_area=True))
+                                x_col="date", y_col="close", perf_colors=True))
     with c2:
         vix_df = _historical("^VIX")
         _show_chart(_line_chart(vix_df, "VIX (Volatility)", "Index",
@@ -631,20 +670,21 @@ def render_market_leading_charts():
         if not df10.empty:
             fig_yc.add_trace(go.Scatter(
                 x=df10["date"], y=df10["value"],
-                mode="lines", name="10-Year",
+                mode="lines", name="10Y",
                 line=dict(color=theme.PALETTE["primary"], width=1.8),
                 hovertemplate="%{x|%Y-%m-%d}: %{y:.2f}%<extra>10Y</extra>",
             ))
         if not df2.empty:
             fig_yc.add_trace(go.Scatter(
                 x=df2["date"], y=df2["value"],
-                mode="lines", name="2-Year",
+                mode="lines", name="2Y",
                 line=dict(color=theme.PALETTE["amber"], width=1.8),
                 hovertemplate="%{x|%Y-%m-%d}: %{y:.2f}%<extra>2Y</extra>",
             ))
-        fig_yc.update_layout(**theme.pro_layout("Treasury Yield Curve (10Y vs 2Y)",
+        fig_yc.update_layout(**theme.pro_layout("Treasury Yields",
                                                 "Yield (%)",
-                                                height=theme.CHART_HEIGHT["lg"]))
+                                                height=theme.CHART_HEIGHT["lg"],
+                                                edge=True))
         fig_yc.update_layout(showlegend=True)
         combined_yc = pd.concat([df10, df2]).dropna(subset=["value"])
         _apply_range_buttons(fig_yc, combined_yc, "date", "value")
@@ -809,7 +849,10 @@ def render_indicator_group(group_key: str, series_dict: dict) -> None:
             info = series_dict[sid]
             df = store.get_observations(sid)
             with col:
-                _show_chart(_line_chart(df, info["name"], info["unit"]))
+                if df.empty:
+                    st.info(f"**{info['name']}** — no data yet. Sync FRED data to populate.")
+                else:
+                    _show_chart(_line_chart(df, info["name"], info["unit"]))
 
 
 def render_macro():
@@ -1221,8 +1264,8 @@ def render_single_stock(ticker: str) -> None:
         fig_price.add_trace(go.Scatter(
             x=price_df["date"], y=price_df["close"],
             mode="lines",
-            line=dict(color=theme.PALETTE["primary"], width=1.8),
-            fill="tozeroy", fillcolor=theme.rgba(theme.PALETTE["primary"], 0.08),
+            line=dict(color=theme.PALETTE["primary"], width=2),
+            fill="tozeroy", fillgradient=theme.gradient(theme.PALETTE["primary"]),
             hovertemplate="%{x|%b %d, %Y} — $%{y:,.2f}<extra></extra>",
         ))
     elif chart_type == "Candle" and not ohlcv_df.empty:
@@ -1236,7 +1279,7 @@ def render_single_stock(ticker: str) -> None:
             decreasing_fillcolor=theme.PALETTE["down"],
         ))
 
-    fig_price.update_layout(**theme.pro_layout("Stock Price (5Y)", "USD ($)"))
+    fig_price.update_layout(**theme.pro_layout("Stock Price (5Y)", "USD ($)", edge=True))
     fig_price.update_layout(
         xaxis=dict(
             rangebreaks=[
@@ -1264,7 +1307,8 @@ def render_single_stock(ticker: str) -> None:
         ("5Y", today - pd.DateOffset(years=5)),
         ("All", None),
     ]
-    _apply_range_buttons(fig_price, price_df, "date", "close", timeframes=timeframes)
+    _apply_range_buttons(fig_price, price_df, "date", "close", timeframes=timeframes,
+                         perf_colors=(chart_type == "Line"))
     _show_chart(fig_price)
 
     with st.container(border=False):
@@ -1402,7 +1446,8 @@ def render_single_stock(ticker: str) -> None:
                            line=dict(width=1.5, color="white")),
                 hovertemplate="%{x|%b %Y} — Yield: %{y:.2f}%<extra></extra>",
             ))
-            fig_div.update_layout(**theme.pro_layout("Dividend Yield — Historical", "%"))
+            fig_div.update_layout(**theme.pro_layout("Dividend Yield — Historical", "%",
+                                                     edge=True))
             _show_chart(fig_div)
 
 
