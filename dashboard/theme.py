@@ -129,6 +129,60 @@ BASE_CSS = f"""
 </style>
 """
 
+# Touch drag-to-scrub (Apple Stocks style). Plotly only moves the crosshair on
+# mouse moves; a dragging finger is treated as a (disabled) drag gesture. This
+# converts a horizontal touch-drag over a chart into synthetic mousemove events
+# so the crosshair follows the finger; a mostly-vertical drag scrolls the page.
+# Injected via components.html (iframe), hence the window.parent references.
+SCRUB_JS = """
+<script>
+(function () {
+    const win = window.parent;
+    const doc = win.document;
+    if (win.__scrubInstalled) return;
+    win.__scrubInstalled = true;
+
+    let gd = null;      // chart under the finger
+    let mode = null;    // null (undecided) | 'scrub' | 'scroll'
+    let sx = 0, sy = 0;
+
+    function fire(type, x, y, target) {
+        target.dispatchEvent(new MouseEvent(type, {
+            bubbles: true, cancelable: true, view: win,
+            clientX: x, clientY: y,
+        }));
+    }
+
+    doc.addEventListener('touchstart', function (e) {
+        const el = e.target;
+        gd = (el && el.closest) ? el.closest('.js-plotly-plot') : null;
+        mode = null;
+        if (gd) { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }
+    }, { capture: true, passive: true });
+
+    doc.addEventListener('touchmove', function (e) {
+        if (!gd) return;
+        const t = e.touches[0];
+        if (mode === null) {
+            const dx = Math.abs(t.clientX - sx);
+            const dy = Math.abs(t.clientY - sy);
+            if (dx < 6 && dy < 6) return;          // ignore jitter
+            mode = dx > dy ? 'scrub' : 'scroll';
+        }
+        if (mode === 'scrub') {
+            e.preventDefault();                     // keep the page still
+            const drag = gd.querySelector('.nsewdrag') || gd;
+            fire('mousemove', t.clientX, t.clientY, drag);
+        }
+    }, { capture: true, passive: false });
+
+    doc.addEventListener('touchend', function () {
+        gd = null; mode = null;
+    }, { capture: true, passive: true });
+})();
+</script>
+"""
+
 MOBILE_CSS = """
 <style>
 @media (max-width: 1024px) {

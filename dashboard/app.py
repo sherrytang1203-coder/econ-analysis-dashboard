@@ -7,6 +7,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from datetime import datetime, date as date_type
 
 import streamlit as st
+import streamlit.components.v1 as components
 import plotly.graph_objects as go
 import pandas as pd
 
@@ -40,6 +41,7 @@ st.set_page_config(
 
 theme.register_template()
 st.markdown(theme.BASE_CSS + theme.MOBILE_CSS, unsafe_allow_html=True)
+components.html(theme.SCRUB_JS, height=0)
 
 # ── Store ─────────────────────────────────────────────────────────────────────
 
@@ -516,7 +518,6 @@ def render_capital_markets():
     # Plotly's .nsewdrag overlay sits on top of all bars and owns the cursor.
     # dragmode=False (set on the figure below) stops Plotly forcing a move cursor;
     # this JS then sets pointer on that overlay element.
-    import streamlit.components.v1 as components
     components.html("""
     <script>
     (function() {
